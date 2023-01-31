@@ -6,6 +6,7 @@ import Home from './components/Home';
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import PokemonInfo from './components/PokemonInfo';
 import PokemonDetail from './components/PokemonDetail';
+import PokemonGame from './components/PokemonGame';
 import axios from 'axios';
 
 const router = createBrowserRouter([{
@@ -33,6 +34,9 @@ const router = createBrowserRouter([{
   }, {
     path: "/pokemon/:id/:info",
     element: <PokemonDetail />
+  }, {
+    path: "/fight",
+    element: <PokemonGame />
   }]
 }])
 

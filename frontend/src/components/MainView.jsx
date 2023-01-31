@@ -1,15 +1,15 @@
 import React from 'react'
-import { Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 
 export default function MainView() {
   return (
     <div>
       <>
         I am a navigation bar
-        <a href='/'>Home</a>
-        <a href='/pokemon'>Pokemon</a>
-        <a href='/fight'>Fight</a>
-    </>
+        <NavLink to='/'>Home</NavLink>
+        <NavLink to='/pokemon'>Pokemon</NavLink>
+        <NavLink to='/fight'>Fight</NavLink>
+      </>
         <Outlet />
     </div>
   )
