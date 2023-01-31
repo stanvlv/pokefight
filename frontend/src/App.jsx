@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import './App.css'
 import PokemonView from './components/PokemonView';
-
+import MainView from './components/MainView';
+import Home from './components/Home';
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import PokemonInfo from './components/PokemonInfo';
 import PokemonDetail from './components/PokemonDetail';
-import MainView from './components/MainView';
 import axios from 'axios';
 
 const router = createBrowserRouter([{
@@ -13,6 +13,11 @@ const router = createBrowserRouter([{
   element: <MainView />,
   children: [{
     index: true,
+    path: "/",
+    element: <Home />
+  },
+    {
+    path: "/pokemon",
     element: <PokemonView />,
     loader: async () => {
       const data = await axios.get("http://localhost:3001/pokemon");

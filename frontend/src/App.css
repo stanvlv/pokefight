@@ -1,0 +1,13 @@
+.pokeballLogo {
+    max-height: 20vh;
+    border-radius: 50%;
+}
+.pokemonLogo {
+    max-height: 20vh;
+}
+
+.home-main-div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
