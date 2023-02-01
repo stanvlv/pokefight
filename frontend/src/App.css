@@ -38,3 +38,9 @@ body {
 .card-text {
     background-color: rgba(220, 248, 96, 0.5);
 }
+
+.poke-info {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+}
