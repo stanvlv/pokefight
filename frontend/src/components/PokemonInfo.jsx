@@ -1,12 +1,12 @@
 import React, {useState, useEffect } from "react";
-import { useLoaderData, Link } from "react-router-dom";
+import { useLoaderData, Link, useNavigate } from "react-router-dom";
 import { Container, Grid, Card, CardActionArea, CardMedia, CardContent, Typography, Button, CardActions } from "@mui/material";
 import pokeball from '../assets/pokeball.png'
 import axios from 'axios'
 
 export default function PokemonInfo() {
   const data = useLoaderData();
-
+  const navigate = useNavigate();
   const [pokemonInfo, setPokemonInfo] = useState([])
 
   useEffect(() => {
@@ -21,16 +21,17 @@ export default function PokemonInfo() {
     <div>
       <Container >
         <Grid container className="poke-info" columns={12}>
-        <Card sx={{ maxWidth: 345 }}>
+        <Card sx={{ maxWidth: 345 }} className='card'>
       <CardActionArea>
         <CardMedia
+          className="media"
           component="img"
           height="200"
           width="auto"
           image={pokemonInfo.sprites?.front_default || `${pokeball}`}
           alt="green iguana"
         />
-        <CardContent>
+        <CardContent className="card-text">
           <Typography gutterBottom variant="h5" component="div">
           {data.name.english}
           </Typography>
@@ -53,7 +54,7 @@ export default function PokemonInfo() {
     </Card>
        
         </Grid>
-        <Link to='/pokemon'></Link><Button>back</Button>
+        <Link to='/pokemon'><Button>back</Button></Link>
       </Container>
     </div>
   );
