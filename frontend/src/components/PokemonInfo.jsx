@@ -42,7 +42,7 @@ export default function PokemonInfo() {
             <ul>
             <li>HP: {data.base.HP}</li>
             <li>Attack: {data.base.Attack}</li>
-            <li>Defence: {data.base.Defense}</li>
+            <li>Defense: {data.base.Defense}</li>
             <li>Speed: {data.base.Speed}</li>
             <li>Special attack: {data.base["Sp. Attack"]}</li>
             <li>Special defence: {data.base["Sp. Defense"]}</li>
