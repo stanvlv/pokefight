@@ -1,17 +1,41 @@
 import React, { useState } from 'react'
-import { lobbyArray, addMyself } from '../pocketbase/pb';
-import { useAtomValue } from 'jotai';
+import { lobbyArray, addMyself, savedUserName, myself } from '../pocketbase/pb';
+import { useAtomValue, useAtom } from 'jotai';
 import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, TextField, Typography, Button } from '@mui/material';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function PokemonGame() {
   const lobby = useAtomValue(lobbyArray);
-  const [userDialogOpened, setUserDialogOpened] = useState(true);
-  const [userName, setUserName] = useState("");
+  const [savedName, setSavedName] = useAtom(savedUserName);
+  const myselfValue = useAtomValue(myself);
+  const [userDialogOpened, setUserDialogOpened] = useState(savedName === null);
+  const [userName, setUserName] = useState(savedName ?? "");
+  const [currentTimestamp, setCurrentTimestamp] = useState(0);
+  const navigate = useNavigate();
 
   const handleRegisterUser = () => {
+    setSavedName(userName);
     setUserDialogOpened(false);
     addMyself(userName, 'available');
   }
+
+  useEffect(() => {
+    // if we have savedName, and myself is null, register with the saved name
+    if (savedName && myselfValue === null) {
+      console.log("readding myself");
+      addMyself(savedName, 'available');
+    }
+  }, [])
+
+  useEffect(() => {
+    const interv = setInterval(() => {
+      setCurrentTimestamp(Date.now());
+    }, 300);
+    return () => {
+      clearInterval(interv);
+    };
+  }, []);
 
   return (
     <>
@@ -26,7 +50,7 @@ export default function PokemonGame() {
             {lobby
               .filter(player => Date.now() - player.updated < 10000)
               .map(player => (
-              <li key={player.id}>{player.name}: {player.status}, updated {(Date.now() - player.updated) / 1000}s ago. ID {player.id}</li>
+              <li key={player.id}>{player.name}: {player.status}, updated {(currentTimestamp - player.updated) / 1000}s ago. ID {player.id}</li>
             ))}
           </ul>
         </Grid>
@@ -43,7 +67,7 @@ export default function PokemonGame() {
           <TextField autoFocus label='Name' fullWidth variant='standard' value={userName} onChange={(e) => setUserName(e.target.value)}/>
         </DialogContent>
         <DialogActions>
-          <Button>Back</Button>
+          <Button onClick={() => navigate(-1)}>Back</Button>
           <Button onClick={handleRegisterUser}>Register</Button>
         </DialogActions>
       </Dialog>

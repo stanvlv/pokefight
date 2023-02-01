@@ -1,5 +1,6 @@
 import PocketBase from "pocketbase";
 import { atom, getDefaultStore } from "jotai";
+import { atomWithStorage } from "jotai/utils";
 const pbAddress = "https://pb.flyingsquirrels.de/";
 
 const pbClient = new PocketBase(pbAddress);
@@ -10,8 +11,8 @@ const lobby = pbClient.collection("lobby");
 
 export const lobbyArray = atom([]);
 export const myself = atom(null);
+export const savedUserName = atomWithStorage("savedUserName", JSON.parse(localStorage.getItem("savedUserName")));
 const jotaiStore = getDefaultStore();
-
 const heartbeatTimer = null;
 let lastBeatTimestamp = 0;
 
@@ -51,7 +52,7 @@ lobby.subscribe("*", (data) => {
     } else if (data.action === "delete") {
         console.log("Witness object deletion: ", data.record);
         jotaiStore.set(lobbyArray, jotaiStore.get(lobbyArray).filter(oldItem => oldItem.id !== data.record.id));
-        if (jotaiStore.get(myself).id === data.record.id) {
+        if (jotaiStore.get(myself)?.id === data.record.id) {
             console.log("Detected changes to myself");
             if (heartbeatTimer) {
                 clearInterval(heartbeatTimer);
@@ -80,18 +81,23 @@ export async function addMyself(name, status) {
     const currentLobby = jotaiStore.get(lobbyArray);
     const foundId = currentLobby.find(val => val.name === name);
     let retObj;
-    if (foundId) {
-        // we have found a user with the given name in the table.
-        // now we have to just update it
-        retObj = await lobby.update(foundId.id, {
-            name, status
-        });
-        // the atom will be updated by the realtime listener, so we don't need to do it here.
-    } else {
-        retObj = await lobby.create({
-            name, status
-        });
-        // the atom will be updated by the realtime listener, so we don't need to do it here.
+    try {
+        if (foundId) {
+            // we have found a user with the given name in the table.
+            // now we have to just update it
+            retObj = await lobby.update(foundId.id, {
+                name, status
+            });
+            // the atom will be updated by the realtime listener, so we don't need to do it here.
+        } else {
+            retObj = await lobby.create({
+                name, status
+            });
+            // the atom will be updated by the realtime listener, so we don't need to do it here.
+        }
+    } catch (err) {
+        console.log(err);
+        return;
     }
     jotaiStore.set(myself, retObj);
     setInterval(heartbeat(retObj.id), 4000);
