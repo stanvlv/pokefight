@@ -11,3 +11,18 @@
     flex-direction: column;
     align-items: center;
 }
+
+.card {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+.pagination-box {
+    display: flex; 
+    justify-content: center;
+}
+
+.container {
+    
+}
