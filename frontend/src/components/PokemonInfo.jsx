@@ -21,16 +21,17 @@ export default function PokemonInfo() {
     <div>
       <Container >
         <Grid container className="poke-info" columns={12}>
-        <Card sx={{ maxWidth: 345 }}>
+        <Card sx={{ maxWidth: 345 }} className='card'>
       <CardActionArea>
         <CardMedia
+          className="media"
           component="img"
           height="200"
           width="auto"
           image={pokemonInfo.sprites?.front_default || `${pokeball}`}
           alt="green iguana"
         />
-        <CardContent>
+        <CardContent className="card-text">
           <Typography gutterBottom variant="h5" component="div">
           {data.name.english}
           </Typography>
