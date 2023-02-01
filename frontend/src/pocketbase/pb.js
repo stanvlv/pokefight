@@ -1,6 +1,6 @@
 import PocketBase from "pocketbase";
 import { atom, getDefaultStore } from "jotai";
-const pbAddress = "http://65.109.133.17:8080/";
+const pbAddress = "https://pb.flyingsquirrels.de/";
 
 const pbClient = new PocketBase(pbAddress);
 
