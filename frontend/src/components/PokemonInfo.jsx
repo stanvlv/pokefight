@@ -1,5 +1,5 @@
 import React, {useState, useEffect } from "react";
-import { useLoaderData } from "react-router-dom";
+import { useLoaderData, Link } from "react-router-dom";
 import { Container, Grid, Card, CardActionArea, CardMedia, CardContent, Typography, Button, CardActions } from "@mui/material";
 import pokeball from '../assets/pokeball.png'
 import axios from 'axios'
@@ -7,26 +7,27 @@ import axios from 'axios'
 export default function PokemonInfo() {
   const data = useLoaderData();
 
-  const [pokemonInfo, setPokemonInfo] = useState()
+  const [pokemonInfo, setPokemonInfo] = useState([])
 
   useEffect(() => {
     // axios.get(`https://pokeapi.co/api/v2/pokemon/${data.name.english.toLowerCase()}`)
     axios.get(`https://pokeapi.co/api/v2/pokemon/${data.id}`)
-    .then(res => setPokemonInfo(res.data.sprites))
+    .then(res => setPokemonInfo(res.data))
     .catch(err => console.error(err))
   }, [])
-
+  
   console.log(pokemonInfo);
   return (
     <div>
-      <Container>
-        <Grid>
+      <Container >
+        <Grid container className="poke-info" columns={12}>
         <Card sx={{ maxWidth: 345 }}>
       <CardActionArea>
         <CardMedia
           component="img"
-          height="140"
-          image={`${pokeball}`}
+          height="200"
+          width="auto"
+          image={pokemonInfo.sprites?.front_default || `${pokeball}`}
           alt="green iguana"
         />
         <CardContent>
@@ -49,15 +50,10 @@ export default function PokemonInfo() {
           </Typography>
         </CardContent>
       </CardActionArea>
-      <CardActions>
-        <Button size="small" color="primary">
-          Share
-        </Button>
-      </CardActions>
     </Card>
-          <p></p>
-          <a href="/">back</a>
+       
         </Grid>
+        <Link to='/pokemon'></Link><Button>back</Button>
       </Container>
     </div>
   );
