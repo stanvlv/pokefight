@@ -22,9 +22,11 @@ export default function PokemonView() {
   // selecting how many pokemon per page and creating the state
   const pokemonPerPage = 20;
   const [currentPage, setCurrentPage] = useState(data.slice(0, pokemonPerPage)) 
+  const [pageNumber, setPageNumber] = useState(1);
 
   // this sets the page 
   const handleClick = (event, page) => {
+    setPageNumber(page);
     const startIndex = (page - 1) * pokemonPerPage
     setCurrentPage(data.slice(startIndex, startIndex + pokemonPerPage))
   }
@@ -37,11 +39,35 @@ export default function PokemonView() {
   // const [pokemonSprites, setPokemonSprites] = useState([])
     
   // data.forEach( async (pok) => {
-  //   await axios.get(`https://pokeapi.co/api/v2/pokemon/${pok.id}`)
-  //   .then(res=> setPokemonSprites(res.data.sprites))
-  //   .catch(err => console.log(err))
-
+  //   const result = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pok.id}`);
   // })
+
+  useEffect(() => {
+    let active = true;
+
+    const newPagePromises = currentPage.map(async ( pokemon ) => {
+      const res = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemon.id}`);
+      return {
+        ...pokemon,
+        sprites: res.data.sprites
+      };
+    });
+
+    Promise.all(newPagePromises).then(newPage => {
+      if (active) {
+        console.log("updated current page with ", newPage);
+        setCurrentPage(newPage);
+      } else  {
+        console.log("active page changed, ignoring...");
+      }
+    }).catch((err) => {
+      console.error(err);
+    })
+
+    return () => {
+      active = false;
+    }
+  }, [pageNumber])
 
   // useEffect(() => {
   //     for(let i = 1; i <= 809; i++) {
