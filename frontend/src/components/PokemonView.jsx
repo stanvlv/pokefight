@@ -12,10 +12,12 @@ import poke from '../assets/pokeball.png'
 import Item from '@mui/material/ListItem'
 import Pagination from "@mui/material/Pagination";
 import Box from '@mui/material/Box'
+import axios from 'axios'
+
 
 export default function PokemonView() {
   const data = useLoaderData();
-  //console.log(data)
+  // console.log(data)
 
   // selecting how many pokemon per page and creating the state
   const pokemonPerPage = 20;
@@ -32,16 +34,33 @@ export default function PokemonView() {
     window.scrollTo(0, 0)
   }, [currentPage])
 
+  // const [pokemonSprites, setPokemonSprites] = useState([])
+    
+  // data.forEach( async (pok) => {
+  //   await axios.get(`https://pokeapi.co/api/v2/pokemon/${pok.id}`)
+  //   .then(res=> setPokemonSprites(res.data.sprites))
+  //   .catch(err => console.log(err))
 
+  // })
 
+  // useEffect(() => {
+  //     for(let i = 1; i <= 809; i++) {
+  //         const url = `https://pokeapi.co/api/v2/pokemon/${i}`
+  //         axios.get(url)
+  //         .then(res => setPokemonSprites(res.data.sprites))
+  //         .catch(err => console.log(err))
+  //       }
+  // }, [])
+
+  // console.log(pokemonSprites)
   return (
     <>
       <Container >
         <Grid container spacing={2} columns={12}>
       {currentPage.map((pok) => (
-        <Grid item xs={6} lg={3} md={6}>
-          <Item>
-        <Card className='card' key={pok.id} >
+        <Grid item xs={6} lg={3} md={6} key={pok.id}>
+          <Item  >
+        <Card className='card' >
           <CardActionArea>
             <CardMedia
             className="media"
