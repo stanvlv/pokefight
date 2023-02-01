@@ -1,23 +1,45 @@
 import React, { useState } from 'react'
-import { lobbyArray, addMyself, savedUserName, myself } from '../pocketbase/pb';
+import { lobbyArray, addMyself, savedUserName, myself, chatArrayAtom, writeToChat } from '../pocketbase/pb';
 import { useAtomValue, useAtom } from 'jotai';
-import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, TextField, Typography, Button } from '@mui/material';
+import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, TextField, Typography, Button, Paper, List, ListItem, ListItemText, Chip, ListItemButton, Box } from '@mui/material';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Stack } from '@mui/system';
+import { useCallback } from 'react';
 
 export default function PokemonGame() {
   const lobby = useAtomValue(lobbyArray);
+  const chatArray = useAtomValue(chatArrayAtom);
   const [savedName, setSavedName] = useAtom(savedUserName);
   const myselfValue = useAtomValue(myself);
   const [userDialogOpened, setUserDialogOpened] = useState(savedName === null);
   const [userName, setUserName] = useState(savedName ?? "");
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
+  const [chatMessage, setChatMessage] = useState("");
   const navigate = useNavigate();
+
+  const getChatUsername = useCallback((chatMsg) => {
+    if (chatMsg.expand?.sender) {
+      return chatMsg.expand.sender.name;
+    }
+    const user = lobby.find(user => user.id === chatMsg.sender);
+    if (user) {
+      return user.name;
+    } else {
+      return chatMsg.sender;
+    }
+  })
 
   const handleRegisterUser = () => {
     setSavedName(userName);
     setUserDialogOpened(false);
     addMyself(userName, 'available');
+  }
+
+  const handleChatMessageSubmit = (e) => {
+    e.preventDefault();
+    writeToChat(chatMessage);
+    setChatMessage("");
   }
 
   useEffect(() => {
@@ -39,23 +61,51 @@ export default function PokemonGame() {
 
   return (
     <>
-      <Grid container gap={2}>
+      <Grid container spacing={2} columns={12}>
         <Grid item xs={12} >
           <Typography variant='body1'>
             This is game's lobby!
           </Typography>
         </Grid>
-        <Grid item xs={6} >
+        <Grid item xs={3} >
+          <Paper elevation={4} sx={{minHeight: "min(50vh, 500px)"}}>
+            <List>
+              {lobby
+                .filter(player => Date.now() - player.updated < 10000)
+                .map(player => {
+                  const timeDiff = (currentTimestamp - player.updated) / 1000;
+                  return (
+                  <ListItemButton key={player.id}>
+                    <ListItemText primary={`${player.name}`} sx={{flexGrow: 0, pr: 1}}/>
+                    <Chip label={`${timeDiff}s`} color={timeDiff < 7 ? 'success' : 'error'} size="small"></Chip>
+                    <Chip label={`ping ${player.ping}ms`} color={player.ping < 1000 ? 'success' : 'error'} size="small"></Chip>
+                  </ListItemButton>
+                  )
+              })}
+            </List>
+          </Paper>
           <ul>
-            {lobby
-              .filter(player => Date.now() - player.updated < 10000)
-              .map(player => (
-              <li key={player.id}>{player.name}: {player.status}, updated {(currentTimestamp - player.updated) / 1000}s ago. ID {player.id}</li>
-            ))}
           </ul>
         </Grid>
-        <Grid item xs={6}>
-
+        <Grid item xs={9}>
+          <Paper elevation={4} sx={{minHeight: "min(50vh, 500px)"}}>
+            <Stack direction="column" >
+              <List>
+                {
+                  chatArray.map(msg => {
+                    return (
+                      <ListItem key={msg.id}>
+                        <ListItemText primary={`${getChatUsername(msg)}: ${msg.message}`} />
+                      </ListItem>
+                    )
+                  })
+                }
+              </List>
+              <Box component="form" onSubmit={handleChatMessageSubmit}>
+                <TextField autoFocus fullWidth label='message' variant='standard' value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} />
+              </Box>
+            </Stack>
+          </Paper>
         </Grid>
       </Grid>
       <Dialog open={userDialogOpened}>
