@@ -22,9 +22,11 @@ export default function PokemonView() {
   // selecting how many pokemon per page and creating the state
   const pokemonPerPage = 20;
   const [currentPage, setCurrentPage] = useState(data.slice(0, pokemonPerPage)) 
+  const [pageNumber, setPageNumber] = useState(1);
 
   // this sets the page 
   const handleClick = (event, page) => {
+    setPageNumber(page);
     const startIndex = (page - 1) * pokemonPerPage
     setCurrentPage(data.slice(startIndex, startIndex + pokemonPerPage))
   }
@@ -34,25 +36,34 @@ export default function PokemonView() {
     window.scrollTo(0, 0)
   }, [currentPage])
 
-  // const [pokemonSprites, setPokemonSprites] = useState([])
-    
-  // data.forEach( async (pok) => {
-  //   await axios.get(`https://pokeapi.co/api/v2/pokemon/${pok.id}`)
-  //   .then(res=> setPokemonSprites(res.data.sprites))
-  //   .catch(err => console.log(err))
+ 
+  useEffect(() => {
+    let active = true;
 
-  // })
+    const newPagePromises = currentPage.map(async ( pokemon ) => {
+      const res = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemon.id}`);
+      return {
+        ...pokemon,
+        sprites: res.data.sprites
+      };
+    });
 
-  // useEffect(() => {
-  //     for(let i = 1; i <= 809; i++) {
-  //         const url = `https://pokeapi.co/api/v2/pokemon/${i}`
-  //         axios.get(url)
-  //         .then(res => setPokemonSprites(res.data.sprites))
-  //         .catch(err => console.log(err))
-  //       }
-  // }, [])
+    Promise.all(newPagePromises).then(newPage => {
+      if (active) {
+        console.log("updated current page with ", newPage);
+        setCurrentPage(newPage);
+      } else  {
+        console.log("active page changed, ignoring...");
+      }
+    }).catch((err) => {
+      console.error(err);
+    })
 
-  // console.log(pokemonSprites)
+    return () => {
+      active = false;
+    }
+  }, [pageNumber])
+
   return (
     <>
       <Container >
@@ -65,11 +76,10 @@ export default function PokemonView() {
             <CardMedia
             className="media"
               component="img"
-              height="100"
-              image={`${poke}`}
+              image={pok.sprites?.front_default || `${poke}`}
               alt="to come"
             />
-            <CardContent>
+            <CardContent className="card-text" >
               <Typography gutterBottom  component="div" >
                 {pok.name.english}
               </Typography>
@@ -78,9 +88,11 @@ export default function PokemonView() {
               </Typography>
             </CardContent>
           </CardActionArea>
-          <Button size="small" color="primary">
+          <Button size="small" color="info" className="button-text">
             PokeInfo
           </Button>
+          <p>/</p>
+          <Button color='error' className="button-text">Fight</Button>
         </Card>
         </Item>
         </Grid>
