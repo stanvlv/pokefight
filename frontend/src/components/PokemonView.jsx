@@ -36,12 +36,7 @@ export default function PokemonView() {
     window.scrollTo(0, 0)
   }, [currentPage])
 
-  // const [pokemonSprites, setPokemonSprites] = useState([])
-    
-  // data.forEach( async (pok) => {
-  //   const result = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pok.id}`);
-  // })
-
+ 
   useEffect(() => {
     let active = true;
 
@@ -69,16 +64,6 @@ export default function PokemonView() {
     }
   }, [pageNumber])
 
-  // useEffect(() => {
-  //     for(let i = 1; i <= 809; i++) {
-  //         const url = `https://pokeapi.co/api/v2/pokemon/${i}`
-  //         axios.get(url)
-  //         .then(res => setPokemonSprites(res.data.sprites))
-  //         .catch(err => console.log(err))
-  //       }
-  // }, [])
-
-  // console.log(pokemonSprites)
   return (
     <>
       <Container >
@@ -91,11 +76,10 @@ export default function PokemonView() {
             <CardMedia
             className="media"
               component="img"
-              height="100"
-              image={`${poke}`}
+              image={pok.sprites?.front_default || `${poke}`}
               alt="to come"
             />
-            <CardContent>
+            <CardContent className="card-text" >
               <Typography gutterBottom  component="div" >
                 {pok.name.english}
               </Typography>
@@ -104,9 +88,11 @@ export default function PokemonView() {
               </Typography>
             </CardContent>
           </CardActionArea>
-          <Button size="small" color="primary">
+          <Button size="small" color="info" className="button-text">
             PokeInfo
           </Button>
+          <p>/</p>
+          <Button color='error' className="button-text">Fight</Button>
         </Card>
         </Item>
         </Grid>

@@ -1,3 +1,6 @@
+body {
+    background-color: rgba(241, 245, 206, 0.5);
+}
 .pokeballLogo {
     max-height: 20vh;
     border-radius: 50%;
@@ -13,12 +16,25 @@
 }
 
 .card {
+    border: 1px solid rgb(84, 152, 253);
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    max-width: 100%;
+    height: auto;
   }
 
 .pagination-box {
     display: flex; 
     justify-content: center;
+}
+
+.media {
+    border: 5px solid rgb(93, 158, 243);
+    max-width: 100%;
+    height: auto;
+}
+
+.card-text {
+    background-color: rgba(220, 248, 96, 0.5);
 }
