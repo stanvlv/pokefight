@@ -1,13 +1,14 @@
 import React, { useState } from 'react'
-import { lobbyArray, addMyself, savedUserName, myself, chatArrayAtom, writeToChat } from '../pocketbase/pb';
 import { useAtomValue, useAtom } from 'jotai';
 import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, TextField, Typography, Button, Paper, List, ListItem, ListItemText, Chip, ListItemButton, Box } from '@mui/material';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Stack } from '@mui/system';
 import { useCallback } from 'react';
+import { lobbyArray, addMyself, myself, savedUserName } from '../pocketbase/lobby';
+import { chatArrayAtom, writeToChat } from '../pocketbase/chat';
 
-export default function PokemonGame() {
+export default function () {
   const lobby = useAtomValue(lobbyArray);
   const chatArray = useAtomValue(chatArrayAtom);
   const [savedName, setSavedName] = useAtom(savedUserName);
@@ -67,8 +68,8 @@ export default function PokemonGame() {
             This is game's lobby!
           </Typography>
         </Grid>
-        <Grid item xs={3} >
-          <Paper elevation={4} sx={{minHeight: "min(50vh, 500px)"}}>
+        <Grid item xs={"auto"} >
+          <Paper elevation={4} sx={{minHeight: "min(50vh, 500px)", maxHeight:"max(70vh, 700px)", minWidth: "20em"}}>
             <List>
               {lobby
                 .filter(player => Date.now() - player.updated < 10000)
@@ -84,13 +85,14 @@ export default function PokemonGame() {
               })}
             </List>
           </Paper>
-          <ul>
-          </ul>
         </Grid>
-        <Grid item xs={9}>
-          <Paper elevation={4} sx={{minHeight: "min(50vh, 500px)"}}>
-            <Stack direction="column" >
-              <List>
+        <Grid item xs>
+          <Paper elevation={4} sx={{minHeight: "min(50vh, 500px)", maxHeight:"max(70vh, 700px)"}}>
+            <Stack direction="column" sx={{maxHeight: "inherit"}}>
+              <Box component="form" onSubmit={handleChatMessageSubmit}>
+                <TextField autoFocus fullWidth label='message' variant='standard' value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} />
+              </Box>
+              <List sx={{overflowY: "scroll"}}>
                 {
                   chatArray.map(msg => {
                     return (
@@ -101,9 +103,6 @@ export default function PokemonGame() {
                   })
                 }
               </List>
-              <Box component="form" onSubmit={handleChatMessageSubmit}>
-                <TextField autoFocus fullWidth label='message' variant='standard' value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} />
-              </Box>
             </Stack>
           </Paper>
         </Grid>

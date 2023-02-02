@@ -6,8 +6,9 @@ import Home from './components/Home';
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import PokemonInfo from './components/PokemonInfo';
 import PokemonDetail from './components/PokemonDetail';
-import PokemonGame from './components/PokemonGame';
+import PokemonLobby from './components/PokemonLobby';
 import axios from 'axios';
+import { CssBaseline } from '@mui/material';
 
 const router = createBrowserRouter([{
   path: "/",
@@ -36,7 +37,7 @@ const router = createBrowserRouter([{
     element: <PokemonDetail />
   }, {
     path: "/fight",
-    element: <PokemonGame />
+    element: <PokemonLobby />
   }]
 }])
 
@@ -44,6 +45,7 @@ function App() {
 
   return (
     <div className="App">
+      <CssBaseline />
       <RouterProvider router={router}> </RouterProvider>
     </div>
   )
