@@ -7,6 +7,7 @@ import { Stack } from '@mui/system';
 import { useCallback } from 'react';
 import { lobbyArray, addMyself, myself, savedUserName } from '../pocketbase/lobby';
 import { chatArrayAtom, writeToChat } from '../pocketbase/chat';
+import { CSSGrid } from './styled/commons';
 
 export default function () {
   const lobby = useAtomValue(lobbyArray);
@@ -62,51 +63,45 @@ export default function () {
 
   return (
     <>
-      <Grid container spacing={2} columns={12}>
-        <Grid item xs={12} >
-          <Typography variant='body1'>
-            This is game's lobby!
-          </Typography>
-        </Grid>
-        <Grid item xs={"auto"} >
-          <Paper elevation={4} sx={{minHeight: "min(50vh, 500px)", maxHeight:"max(70vh, 700px)", minWidth: "20em"}}>
-            <List>
-              {lobby
-                .filter(player => Date.now() - player.updated < 10000)
-                .map(player => {
-                  const timeDiff = (currentTimestamp - player.updated) / 1000;
+      <Typography variant='body1'>
+        This is game's lobby!
+      </Typography>
+      <CSSGrid sx={{gap: 2, gridTemplateRows: "900px"}}>
+        <Paper elevation={4} sx={{minWidth: "20em"}}>
+          <List>
+            {lobby
+              .filter(player => Date.now() - player.updated < 10000)
+              .map(player => {
+                const timeDiff = (currentTimestamp - player.updated) / 1000;
+                return (
+                <ListItemButton key={player.id}>
+                  <ListItemText primary={`${player.name}`} sx={{flexGrow: 0, pr: 1}}/>
+                  <Chip label={`${timeDiff}s`} color={timeDiff < 7 ? 'success' : 'error'} size="small"></Chip>
+                  <Chip label={`ping ${player.ping}ms`} color={player.ping < 1000 ? 'success' : 'error'} size="small"></Chip>
+                </ListItemButton>
+                )
+            })}
+          </List>
+        </Paper>
+        <Paper elevation={4} sx={{}}>
+          <Stack direction="column" sx={{maxHeight: "100%", p: 1}} gap={2}>
+            <Box component="form" onSubmit={handleChatMessageSubmit}>
+              <TextField autoFocus fullWidth label='message' variant='standard' value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} />
+            </Box>
+            <List sx={{overflowY: "scroll"}}>
+              {
+                chatArray.map(msg => {
                   return (
-                  <ListItemButton key={player.id}>
-                    <ListItemText primary={`${player.name}`} sx={{flexGrow: 0, pr: 1}}/>
-                    <Chip label={`${timeDiff}s`} color={timeDiff < 7 ? 'success' : 'error'} size="small"></Chip>
-                    <Chip label={`ping ${player.ping}ms`} color={player.ping < 1000 ? 'success' : 'error'} size="small"></Chip>
-                  </ListItemButton>
+                    <ListItem key={msg.id}>
+                      <ListItemText primary={`${getChatUsername(msg)}: ${msg.message}`} />
+                    </ListItem>
                   )
-              })}
+                })
+              }
             </List>
-          </Paper>
-        </Grid>
-        <Grid item xs>
-          <Paper elevation={4} sx={{minHeight: "min(50vh, 500px)", maxHeight:"max(70vh, 700px)"}}>
-            <Stack direction="column" sx={{maxHeight: "inherit"}}>
-              <Box component="form" onSubmit={handleChatMessageSubmit}>
-                <TextField autoFocus fullWidth label='message' variant='standard' value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} />
-              </Box>
-              <List sx={{overflowY: "scroll"}}>
-                {
-                  chatArray.map(msg => {
-                    return (
-                      <ListItem key={msg.id}>
-                        <ListItemText primary={`${getChatUsername(msg)}: ${msg.message}`} />
-                      </ListItem>
-                    )
-                  })
-                }
-              </List>
-            </Stack>
-          </Paper>
-        </Grid>
-      </Grid>
+          </Stack>
+        </Paper>
+      </CSSGrid>
       <Dialog open={userDialogOpened}>
         <DialogTitle>Enter your name</DialogTitle>
         <DialogContent>
