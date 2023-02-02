@@ -7,7 +7,7 @@ export default function Home() {
     <div className='home-main-div'>
         <img src={`${pokemonLogo}`} className='pokemonLogo'/>
         <h1>Welcome to Pokefight</h1>
-        <h2>Gotta catch 'em all</h2>
+        <h2>Gotta catch &apos;em all</h2>
         <img src={`${pokeballLogo}`} className='pokeballLogo' />
         </div>
     </>

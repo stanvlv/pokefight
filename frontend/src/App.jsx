@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import './App.css'
 import PokemonView from './components/PokemonView';
 import MainView from './components/MainView';
