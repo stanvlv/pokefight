@@ -4,14 +4,15 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import pokemonLogo from "../assets/pokemonfoto.png";
+import { Link } from 'react-router-dom';
 
 function AppBarUp() {
   return (
     <AppBar position="static">
       <Container maxWidth="xl">
         <Toolbar disableGutters>
-          <img src={`${pokemonLogo}`} style={{ height: "2rem", left: "0" }} />
-
+          <img src={`${pokemonLogo}`} style={{ height: "2rem", left: "0", marginRight: "3rem"}} />
+        <Link to="/">
           <Typography
             variant="h6"
             noWrap
@@ -21,7 +22,7 @@ function AppBarUp() {
               mr: 2,
               display: { xs: "none", md: "flex" },
               fontFamily: "monospace",
-              fontWeight: 700,
+              fontWeight: 400,
               letterSpacing: ".3rem",
               color: "inherit",
               textDecoration: "none",
@@ -29,7 +30,8 @@ function AppBarUp() {
           >
             Home
           </Typography>
-
+          </Link>
+          <Link to="/pokemon">
           <Typography
             variant="h6"
             noWrap
@@ -39,7 +41,7 @@ function AppBarUp() {
               mr: 2,
               display: { xs: "none", md: "flex" },
               fontFamily: "monospace",
-              fontWeight: 700,
+              fontWeight: 400,
               letterSpacing: ".3rem",
               color: "inherit",
               textDecoration: "none",
@@ -47,17 +49,18 @@ function AppBarUp() {
           >
             Pokemon
           </Typography>
-
+          </Link>
+            <Link to='/fight'>
           <Typography
             variant="h6"
             noWrap
             component="a"
-            href="/fight"
+            href="/pokemon"
             sx={{
               mr: 2,
               display: { xs: "none", md: "flex" },
               fontFamily: "monospace",
-              fontWeight: 700,
+              fontWeight: 400,
               letterSpacing: ".3rem",
               color: "inherit",
               textDecoration: "none",
@@ -65,6 +68,7 @@ function AppBarUp() {
           >
             Fight
           </Typography>
+          </Link>
         </Toolbar>
       </Container>
     </AppBar>
