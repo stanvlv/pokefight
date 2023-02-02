@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useAtomValue, useAtom } from 'jotai';
 import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, TextField, Typography, Button, Paper, List, ListItem, ListItemText, Chip, ListItemButton, Box } from '@mui/material';
 import { useEffect } from 'react';
@@ -8,6 +8,7 @@ import { useCallback } from 'react';
 import { lobbyArray, addMyself, myself, savedUserName } from '../pocketbase/lobby';
 import { chatArrayAtom, writeToChat } from '../pocketbase/chat';
 import { CSSGrid } from './styled/commons';
+import { useMemo } from 'react';
 
 export default function () {
   const lobby = useAtomValue(lobbyArray);
@@ -19,6 +20,12 @@ export default function () {
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
   const [chatMessage, setChatMessage] = useState("");
   const navigate = useNavigate();
+  const bottomDiv = useRef(null);
+
+  // we need to reverse chatArray, because we want to show the latest message at the bottom
+  const reversedChatArray = useMemo(() => {
+    return chatArray.slice().reverse();
+  }, [chatArray]);
 
   const getChatUsername = useCallback((chatMsg) => {
     if (chatMsg.expand?.sender) {
@@ -61,12 +68,16 @@ export default function () {
     };
   }, []);
 
+  useEffect(() => {
+    bottomDiv.current?.scrollIntoView({ behavior: "smooth" });
+  }, [reversedChatArray]);
+
   return (
     <>
       <Typography variant='body1'>
         This is game's lobby!
       </Typography>
-      <CSSGrid sx={{gap: 2, gridTemplateRows: "900px"}}>
+      <CSSGrid sx={{gap: 2, maxHeight: "90vh"}}>
         <Paper elevation={4} sx={{minWidth: "20em"}}>
           <List>
             {lobby
@@ -83,14 +94,11 @@ export default function () {
             })}
           </List>
         </Paper>
-        <Paper elevation={4} sx={{}}>
+        <Paper elevation={4}>
           <Stack direction="column" sx={{maxHeight: "100%", p: 1}} gap={2}>
-            <Box component="form" onSubmit={handleChatMessageSubmit}>
-              <TextField autoFocus fullWidth label='message' variant='standard' value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} />
-            </Box>
             <List sx={{overflowY: "scroll"}}>
               {
-                chatArray.map(msg => {
+                reversedChatArray.map(msg => {
                   return (
                     <ListItem key={msg.id}>
                       <ListItemText primary={`${getChatUsername(msg)}: ${msg.message}`} />
@@ -98,7 +106,11 @@ export default function () {
                   )
                 })
               }
+              <div ref={bottomDiv}></div>
             </List>
+            <Box component="form" onSubmit={handleChatMessageSubmit}>
+              <TextField autoFocus fullWidth placeholder='message' variant='standard' value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} />
+            </Box>
           </Stack>
         </Paper>
       </CSSGrid>

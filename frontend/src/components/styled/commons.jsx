@@ -1,8 +1,12 @@
-import { styled } from "@mui/material";
+import { styled } from "@mui/material/styles";
 
-// styled() div element that creates grid with 2 columns
-export const CSSGrid = styled("div")({
+export const CSSGrid = styled("div")(({theme}) => ({
     display: "grid",
-    gridTemplateColumns: "fit-content(30%) 1fr",
+    gridTemplateColumns: `fit-content(30%) 1fr`,
+    [theme.breakpoints.down("sm")]: {
+        gridTemplateColumns: `1fr`,
+    },
     alignItems: "stretch",
+    gridTemplateRows: "minmax(10em, 1fr)",
 })
+)
