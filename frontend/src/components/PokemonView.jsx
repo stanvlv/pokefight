@@ -68,11 +68,9 @@ export default function PokemonView() {
 
   return (
     <>
-      <Container>
         <Grid container spacing={2} columns={12}>
           {currentPage.map((pok) => (
             <Grid item xs={6} lg={3} md={6} key={pok.id}>
-              <Item>
                 <Card className="card">
                   <CardActionArea>
                     <CardMedia
@@ -99,11 +97,9 @@ export default function PokemonView() {
                     </Button>
                   </Link>
                 </Card>
-              </Item>
             </Grid>
           ))}
         </Grid>
-      </Container>
       <Box className="pagination-box">
         <Pagination
           count={Math.ceil(data.length / pokemonPerPage)}
