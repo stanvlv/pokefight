@@ -96,7 +96,7 @@ export default function () {
         </Paper>
         <Paper elevation={4}>
           <Stack direction="column" sx={{maxHeight: "100%", p: 1}} gap={2}>
-            <List sx={{overflowY: "scroll"}}>
+            <List sx={{overflowY: "auto"}}>
               {
                 reversedChatArray.map(msg => {
                   return (
@@ -109,7 +109,7 @@ export default function () {
               <div ref={bottomDiv}></div>
             </List>
             <Box component="form" onSubmit={handleChatMessageSubmit}>
-              <TextField autoFocus fullWidth placeholder='message' variant='standard' value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} />
+              <TextField autoFocus fullWidth placeholder='message' variant='outlined' value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} />
             </Box>
           </Stack>
         </Paper>
