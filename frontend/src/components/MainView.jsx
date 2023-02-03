@@ -8,7 +8,7 @@ export default function MainView() {
   return (
     <div>
        <AppBarUp />
-      <Container>
+      <Container >
         <Outlet />
       </Container>
         <AppBarDown />

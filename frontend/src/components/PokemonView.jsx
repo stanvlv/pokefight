@@ -11,16 +11,30 @@ import poke from "../assets/pokeball.png";
 import Pagination from "@mui/material/Pagination";
 import Box from "@mui/material/Box";
 import axios from "axios";
+import TextField from '@mui/material/TextField'
 
 export default function PokemonView() {
   const data = useLoaderData();
   // console.log(data)
 
+ 
   // selecting how many pokemon per page and creating the state
   const pokemonPerPage = 20;
   const [currentPage, setCurrentPage] = useState(data.slice(0, pokemonPerPage));
   const [pageNumber, setPageNumber] = useState(1);
 
+
+  // this will take the input and save it in search value
+  //then it filters the pokemons from the currentpage
+  const [searchValue, setSearchValue] = useState('');
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault()
+  }
+  const filteredData = currentPage.filter((pok) => {
+    return pok.name.english.toLowerCase().includes(searchValue.toLowerCase());
+  });
+  
   // this sets the page
   const handleClick = (event, page) => {
     setPageNumber(page);
@@ -66,10 +80,20 @@ export default function PokemonView() {
 
   return (
     <>
+    <form onSubmit={handleSearchSubmit} className="form-search">
+    <TextField
+    label="Search for a Pokemon"
+    variant="outlined"
+    value={searchValue}
+    onChange={e => setSearchValue(e.target.value)}
+  />
+  <Button type="submit" variant="contained" color="primary">Search</Button>
+  </form>
+    <div style={{ minHeight: "calc(100vh - 64px)"}}>
         <Grid container spacing={2} columns={12}>
-          {currentPage.map((pok) => (
+          {filteredData.map((pok) => (
             <Grid item xs={6} lg={3} md={6} key={pok.id}>
-                <Card className="card">
+                <Card className="card" style={{ maxWidth: 175 }}>
                   <CardActionArea>
                     <CardMedia
                       className="media"
@@ -105,6 +129,7 @@ export default function PokemonView() {
           onChange={handleClick}
         />
       </Box>
+    </div>
     </>
   );
 }
