@@ -1,12 +1,12 @@
 import React, {useState, useEffect } from "react";
-import { useLoaderData, Link, useNavigate } from "react-router-dom";
-import { Container, Grid, Card, CardActionArea, CardMedia, CardContent, Typography, Button, CardActions } from "@mui/material";
+import { useLoaderData, Link } from "react-router-dom";
+import { Container, Grid, Card, CardActionArea, CardMedia, CardContent, Typography, Button } from "@mui/material";
 import pokeball from '../assets/pokeball.png'
 import axios from 'axios'
 
 export default function PokemonInfo() {
   const data = useLoaderData();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [pokemonInfo, setPokemonInfo] = useState([])
 
   useEffect(() => {
