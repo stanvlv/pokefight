@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLoaderData, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 // import PokemonDetail from './PokemonDetail';
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -11,32 +11,48 @@ import poke from "../assets/pokeball.png";
 import Pagination from "@mui/material/Pagination";
 import Box from "@mui/material/Box";
 import axios from "axios";
+import { useAtom } from "jotai";
+import { pokemonsAtom } from "../atoms/pokemons";
 
 export default function PokemonView() {
-  const data = useLoaderData();
+  const [data, setData] = useAtom(pokemonsAtom);
+  // const data = useLoaderData();
   // console.log(data)
 
   // selecting how many pokemon per page and creating the state
   const pokemonPerPage = 20;
-  const [currentPage, setCurrentPage] = useState(data.slice(0, pokemonPerPage));
+  // const [currentPage, setCurrentPage] = useState(data.slice(0, pokemonPerPage));
+  // let currentPageAtom = focusAtom(pokemonsAtom, (optic) => {
+  //   console.log(optic);
+  //   return optic.filter((pokemon) => pokemon.id <= pokemonPerPage);
+  // });
+  // let [currentPage, setCurrentPage] = useAtom(currentPageAtom);
   const [pageNumber, setPageNumber] = useState(1);
 
   // this sets the page
   const handleClick = (event, page) => {
     setPageNumber(page);
-    const startIndex = (page - 1) * pokemonPerPage;
-    setCurrentPage(data.slice(startIndex, startIndex + pokemonPerPage));
+    // const startIndex = (page - 1) * pokemonPerPage;
+    // setCurrentPage(data.slice(startIndex, startIndex + pokemonPerPage));
+    // currentPageAtom = focusAtom(pokemonsAtom, (optic) => {
+    //   console. log(optic);
+    //   return optic.slice(startIndex, startIndex + pokemonPerPage)
+    // });
+    // // does this work?
+    // [currentPage, setCurrentPage] = useAtom(currentPageAtom);
   };
 
   // scrolling to top of the page by new render of pokemon
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [currentPage]);
+  }, [pageNumber]);
 
   useEffect(() => {
     let active = true;
 
-    const newPagePromises = currentPage.map(async (pokemon) => {
+    const newPagePromises = data.filter((val, ind) => {
+      return ind < pokemonPerPage * pageNumber && ind >= pokemonPerPage * (pageNumber - 1);
+    }).map(async (pokemon) => {
       const res = await axios.get(
         `https://pokeapi.co/api/v2/pokemon/${pokemon.id}`
       );
@@ -50,7 +66,14 @@ export default function PokemonView() {
       .then((newPage) => {
         if (active) {
           console.log("updated current page with ", newPage);
-          setCurrentPage(newPage);
+          // setCurrentPage(newPage);
+          setData(data.map((val, ind) => {
+            if (ind < pokemonPerPage * pageNumber && ind >= pokemonPerPage * (pageNumber - 1)) {
+              return newPage[ind - (pageNumber - 1) * pokemonPerPage];
+            } else {
+              return val;
+            }
+          }));
         } else {
           console.log("active page changed, ignoring...");
         }
@@ -67,7 +90,9 @@ export default function PokemonView() {
   return (
     <>
         <Grid container spacing={2} columns={12}>
-          {currentPage.map((pok) => (
+          {data.filter((val, ind) => {
+            return ind < pokemonPerPage * pageNumber && ind >= pokemonPerPage * (pageNumber - 1);
+          }).map((pok) => (
             <Grid item xs={6} lg={3} md={6} key={pok.id}>
                 <Card className="card">
                   <CardActionArea>

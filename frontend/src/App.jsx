@@ -8,6 +8,8 @@ import PokemonDetail from './components/PokemonDetail';
 import PokemonLobby from './components/PokemonLobby';
 import axios from 'axios';
 import { CssBaseline } from '@mui/material';
+import { getDefaultStore } from 'jotai';
+import { pokemonsAtom } from './atoms/pokemons';
 
 const router = createBrowserRouter([{
   path: "/",
@@ -22,8 +24,9 @@ const router = createBrowserRouter([{
     element: <PokemonView />,
     loader: async () => {
       const data = await axios.get("http://localhost:3001/pokemon");
+      getDefaultStore().set(pokemonsAtom, data.data);
       return data.data;
-    },
+    }
   }, {
     path: "/pokemon/:id",
     element: <PokemonInfo />,
