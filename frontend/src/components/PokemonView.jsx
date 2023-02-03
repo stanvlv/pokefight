@@ -12,9 +12,8 @@ import Pagination from "@mui/material/Pagination";
 import Box from "@mui/material/Box";
 import axios from "axios";
 import { useAtom, atom, useAtomValue } from "jotai";
-import { pokemonsAtom, pokemonsAtomsAtom, filteredPokemonsAtom, paginatedAtom } from "../atoms/pokemons";
-import TextField from '@mui/material/TextField'
-import { splitAtom } from "jotai/utils";
+import { filteredPokemonsAtom, paginatedAtom, } from "../atoms/pokemons";
+import TextField from '@mui/material/TextField';
 
 export default function PokemonView() {
   // const [data, setData] = useAtom(pokemonsAtom);
@@ -78,7 +77,10 @@ export default function PokemonView() {
   useEffect(() => {
     let active = true;
 
-    const newPagePromises = data.map(async (pokemon) => {
+    // Only fetch sprites for pokemon that don't have them yet
+    // otherwise we'd be fetching sprites for pokemon that we already have
+    // and cause an infinite loop
+    const newPagePromises = data.filter(pokemon => !pokemon.sprites).map(async (pokemon) => {
       const res = await axios.get(
         `https://pokeapi.co/api/v2/pokemon/${pokemon.id}`
       );
@@ -88,14 +90,18 @@ export default function PokemonView() {
       };
     });
 
+    if (newPagePromises.length === 0) {
+      // console.log("no new sprites to fetch, skipping...");
+      return;
+    }
+
     Promise.all(newPagePromises)
       .then((newPage) => {
         if (active) {
-          console.log("updated current page with ", newPage);
           // setCurrentPage(newPage);
           setData(newPage);
         } else {
-          console.log("active page changed, ignoring...");
+          // console.log("active page changed, ignoring...");
         }
       })
       .catch((err) => {
@@ -105,7 +111,7 @@ export default function PokemonView() {
     return () => {
       active = false;
     };
-  }, [currentPageAtom]);
+  }, [data]);
 
   return (
     <>

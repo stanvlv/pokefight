@@ -8,8 +8,9 @@ import PokemonDetail from './components/PokemonDetail';
 import PokemonLobby from './components/PokemonLobby';
 import axios from 'axios';
 import { CssBaseline } from '@mui/material';
-import { getDefaultStore } from 'jotai';
-import { pokemonsAtom } from './atoms/pokemons';
+import { initialPokemonsAtom, pokemonsAtom } from './atoms/pokemons';
+import { useAtom, useAtomValue } from 'jotai';
+import { useEffect } from 'react';
 
 const router = createBrowserRouter([{
   path: "/",
@@ -22,11 +23,6 @@ const router = createBrowserRouter([{
     {
     path: "/pokemon",
     element: <PokemonView />,
-    loader: async () => {
-      const data = await axios.get("http://localhost:3001/pokemon");
-      getDefaultStore().set(pokemonsAtom, data.data);
-      return data.data;
-    }
   }, {
     path: "/pokemon/:id",
     element: <PokemonInfo />,
@@ -44,6 +40,12 @@ const router = createBrowserRouter([{
 }])
 
 function App() {
+  const [, setPokemons] = useAtom(pokemonsAtom);
+  const initialPokemons = useAtomValue(initialPokemonsAtom);
+
+  useEffect(() => {
+    setPokemons(initialPokemons.data);
+  }, [initialPokemons]);
 
   return (
     <div className="App">

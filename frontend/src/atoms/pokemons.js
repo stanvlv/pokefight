@@ -1,6 +1,9 @@
 import { atom } from "jotai";
 import { atomFamily, splitAtom } from "jotai/utils";
 import  deepEqual  from "fast-deep-equal";
+import axios from "axios";
+
+export const initialPokemonsAtom = atom(async () => axios.get("http://localhost:3001/pokemon"));
 
 export const pokemonsAtom = atom([]);
 
