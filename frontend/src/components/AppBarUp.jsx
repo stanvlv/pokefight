@@ -8,11 +8,11 @@ import { Link } from 'react-router-dom';
 
 function AppBarUp() {
   return (
-    <AppBar position="static">
+    <AppBar position="static" style={{marginBottom: "2rem"}}>
       <Container maxWidth="xl">
         <Toolbar disableGutters>
           <img src={`${pokemonLogo}`} style={{ height: "2rem", left: "0", marginRight: "3rem"}} />
-        <Link to="/">
+        <Link to="/" className="nav-link">
           <Typography
             variant="h6"
             noWrap
@@ -29,7 +29,7 @@ function AppBarUp() {
             Home
           </Typography>
           </Link>
-          <Link to="/pokemon">
+          <Link to="/pokemon" className="nav-link">
           <Typography
             variant="h6"
             noWrap
@@ -46,7 +46,7 @@ function AppBarUp() {
             Pokemon
           </Typography>
           </Link>
-            <Link to='/fight'>
+            <Link to='/fight' className="nav-link">
           <Typography
             variant="h6"
             noWrap
