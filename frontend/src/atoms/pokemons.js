@@ -1,11 +1,50 @@
 import { atom } from "jotai";
-import { atomFamily, splitAtom } from "jotai/utils";
+import { atomFamily, splitAtom, loadable } from "jotai/utils";
 import  deepEqual  from "fast-deep-equal";
 import axios from "axios";
 
-export const initialPokemonsAtom = atom(async () => axios.get("http://localhost:3001/pokemon"));
-
+// This will contain an array of atoms, one for each pokemon
 export const pokemonsAtom = atom([]);
+// This is a flag to indicate whether the pokemons have been fetched or not
+// Since we only ever use defaultStore, this flag can be global
+let pokemonsArrived = false;
+
+pokemonsAtom.onMount = (setValue) => {
+  let active = true;
+  console.log("Fetching pokemons")
+  if (!pokemonsArrived) axios.get("http://localhost:3001/pokemon").then((response) => {
+    if (active) {
+      // we create an atom for each pokemon in the array
+      setValue(response.data.map((pokemon) => {
+        // this atom will actually hold the pokemon data
+        const initialPokemonAtom = atom(pokemon);
+        // But we return a derived atom that will fetch the sprite if it doesn't have one
+        return atom((get) => {
+          const pokemon = get(initialPokemonAtom);
+          // if the pokemon doesn't have a sprite, fetch it
+          if (!pokemon.sprites) {
+            // create an atom that will fetch the sprite
+            const spriteAtom = atom(async () => {
+              console.log(`Fetching sprite for ${pokemon.name.english} (${pokemon.id})`);
+              const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemon.id}`);
+              return response.data.sprites;
+            });
+            // to not block the UI, we use loadable to wrap the sprite atom
+            const spriteLoadable = loadable(spriteAtom);
+            pokemon.sprites = spriteLoadable;
+          }
+          return pokemon;
+        })
+      }));
+      // setValue(response.data);
+      pokemonsArrived = true;
+    }
+  });
+  return () => {
+    console.log("Unmounting pokemons");
+    active = false;
+  };
+}
 
 export const pokemonsAtomsAtom = splitAtom(pokemonsAtom);
 
@@ -14,31 +53,14 @@ export const paginatedAtom = atomFamily(({page, pageSize, paginateMe}) => {
   return atom((get) => {
     const pokemons = get(paginateMe);
     return pokemons.slice((page - 1) * pageSize, page * pageSize);
-  }, (get, set, newPokemons) => {
-    const pokemons = get(paginateMe);
-    set(paginateMe, [
-      ...pokemons.slice(0, (page - 1) * pageSize),
-      ...newPokemons,
-      ...pokemons.slice(page * pageSize),
-    ]);
   });
 }, deepEqual);
 
 // This is a derived atom family that returns pokemons filtered by name
-// all hail the mighty github copilot
 export const filteredPokemonsAtom = atomFamily((name) => {
   return atom((get) => {
     const pokemons = get(pokemonsAtom);
     // filter pokemons by name
-    return pokemons.filter((pokemon) => pokemon.name.english.toLowerCase().includes(name));
-  }, (get, set, newPokemons) => {
-    const pokemons = get(pokemonsAtom);
-    // assumption: newPokemons is a subset of pokemons with new data
-    set(pokemonsAtom, pokemons.map((pokemon) => {
-      // if the pokemon is in newPokemons, return the new data
-      const newPokemon = newPokemons.find((newPokemon) => newPokemon.id === pokemon.id);
-      // otherwise, return the old data
-      return newPokemon || pokemon;
-    }));
+    return pokemons.filter((pokemon) => get(pokemon).name.english.toLowerCase().includes(name));
   });
 });

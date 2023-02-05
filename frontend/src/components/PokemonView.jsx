@@ -10,24 +10,50 @@ import Grid from "@mui/material/Grid";
 import poke from "../assets/pokeball.png";
 import Pagination from "@mui/material/Pagination";
 import Box from "@mui/material/Box";
-import axios from "axios";
-import { useAtom, atom, useAtomValue } from "jotai";
+import { useAtom, atom, useAtomValue, useStore } from "jotai";
 import { filteredPokemonsAtom, paginatedAtom, } from "../atoms/pokemons";
 import TextField from '@mui/material/TextField';
 
-export default function PokemonView() {
-  // const [data, setData] = useAtom(pokemonsAtom);
-  // data is now an array of atoms that each contain a pokemon
-  // const data = useLoaderData();
-  // console.log(data)
+function PokemonCard({ pokemonAtom }) {
+  // pok.sprites is loadable, so we need to use the currentStore to get the value
+  const pokemon = useAtomValue(pokemonAtom);
+  const sprites = useAtomValue(pokemon.sprites);
+  // The sprites themselves are stored in sprites.data
+  // sprites.state can be "hasData", "hasError", or "loading"
+  return (
+    <Card className="card" sx={{ maxWidth: 175 }}>
+      <CardActionArea>
+        <CardMedia
+          className="media"
+          component="img"
+          image={sprites.state === "hasData" ? sprites.data.front_default : `${poke}`}
+          alt="to come"
+        />
+        <CardContent className="card-text">
+          <Typography gutterBottom component="div">
+            {pokemon.name.english}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {pokemon.type[0]} {pokemon.type[1] ? `/ ${pokemon.type[1]}` : null}
+          </Typography>
+        </CardContent>
+      </CardActionArea>
+      <Link
+        to={`/pokemon/${pokemon.id}`}
+        style={{ textDecoration: "none", color: "inherit" }}
+      >
+        <Button size="small" color="info" className="button-text">
+          Click for pokemon stats
+        </Button>
+      </Link>
+    </Card>
+  );
+}
 
- 
+export default function PokemonView() {
   // selecting how many pokemon per page and creating the state
   const pokemonPerPage = 20;
   const [pageNumber, setPageNumber] = useState(1);
-  // const [currentPage, setCurrentPage] = useState(data.slice(0, pokemonPerPage));
-  // let [currentPage, setCurrentPage] = useAtom(currentPageAtom);
-  // console.log(currentPage);
 
   // this will take the input and save it in search value
   //then it filters the pokemons from the currentpage
@@ -43,14 +69,14 @@ export default function PokemonView() {
       return Math.ceil(filtered.length / pokemonPerPage);
     });
   }, [filteredAtom])
-
   const pageCount = useAtomValue(pageSizeAtom);
 
   const currentPageAtom = useMemo(() => {
     return paginatedAtom({page: pageNumber, pageSize: pokemonPerPage, paginateMe: filteredAtom});
   }, [pageNumber, filteredAtom]);
 
-  const [data, setData] = useAtom(currentPageAtom);
+  const [data,] = useAtom(currentPageAtom);
+  const currentStore = useStore();
 
   const handleSearchSubmit = (e) => {
     e.preventDefault()
@@ -59,59 +85,12 @@ export default function PokemonView() {
   // this sets the page
   const handleClick = (event, page) => {
     setPageNumber(page);
-    // const startIndex = (page - 1) * pokemonPerPage;
-    // setCurrentPage(data.slice(startIndex, startIndex + pokemonPerPage));
-    // currentPageAtom = focusAtom(pokemonsAtom, (optic) => {
-    //   console. log(optic);
-    //   return optic.slice(startIndex, startIndex + pokemonPerPage)
-    // });
-    // // does this work?
-    // [currentPage, setCurrentPage] = useAtom(currentPageAtom);
   };
 
   // scrolling to top of the page by new render of pokemon
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pageNumber]);
-
-  useEffect(() => {
-    let active = true;
-
-    // Only fetch sprites for pokemon that don't have them yet
-    // otherwise we'd be fetching sprites for pokemon that we already have
-    // and cause an infinite loop
-    const newPagePromises = data.filter(pokemon => !pokemon.sprites).map(async (pokemon) => {
-      const res = await axios.get(
-        `https://pokeapi.co/api/v2/pokemon/${pokemon.id}`
-      );
-      return {
-        ...pokemon,
-        sprites: res.data.sprites,
-      };
-    });
-
-    if (newPagePromises.length === 0) {
-      // console.log("no new sprites to fetch, skipping...");
-      return;
-    }
-
-    Promise.all(newPagePromises)
-      .then((newPage) => {
-        if (active) {
-          // setCurrentPage(newPage);
-          setData(newPage);
-        } else {
-          // console.log("active page changed, ignoring...");
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [data]);
 
   return (
     <>
@@ -126,34 +105,9 @@ export default function PokemonView() {
   </form>
     <div style={{ minHeight: "calc(100vh - 64px)"}}>
         <Grid container spacing={2} columns={12}>
-          {data.map((pok) => (
-            <Grid item xs={6} lg={3} md={6} key={pok.id}>
-                <Card className="card" style={{ maxWidth: 175 }}>
-                  <CardActionArea>
-                    <CardMedia
-                      className="media"
-                      component="img"
-                      image={pok.sprites?.front_default || `${poke}`}
-                      alt="to come"
-                    />
-                    <CardContent className="card-text">
-                      <Typography gutterBottom component="div">
-                        {pok.name.english}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {pok.type[0]} {pok.type[1] ? `/ ${pok.type[1]}` : null}
-                      </Typography>
-                    </CardContent>
-                  </CardActionArea>
-                  <Link
-                    to={`/pokemon/${pok.id}`}
-                    style={{ textDecoration: "none", color: "inherit" }}
-                  >
-                    <Button size="small" color="info" className="button-text">
-                      Click for pokemon stats
-                    </Button>
-                  </Link>
-                </Card>
+          {data.map((pokAtom) => (
+            <Grid item xs={6} lg={3} md={6} key={currentStore.get(pokAtom).id}>
+              <PokemonCard pokemonAtom={pokAtom} />
             </Grid>
           ))}
         </Grid>

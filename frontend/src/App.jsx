@@ -8,7 +8,7 @@ import PokemonDetail from './components/PokemonDetail';
 import PokemonLobby from './components/PokemonLobby';
 import axios from 'axios';
 import { CssBaseline } from '@mui/material';
-import { initialPokemonsAtom, pokemonsAtom } from './atoms/pokemons';
+import { pokemonsAtom } from './atoms/pokemons';
 import { useAtom, useAtomValue } from 'jotai';
 import { useEffect } from 'react';
 
@@ -40,12 +40,18 @@ const router = createBrowserRouter([{
 }])
 
 function App() {
-  const [, setPokemons] = useAtom(pokemonsAtom);
-  const initialPokemons = useAtomValue(initialPokemonsAtom);
+  // const [, setPokemons] = useAtom(pokemonsAtom);
+  // const initialPokemons = useAtomValue(initialPokemonsAtom);
 
-  useEffect(() => {
-    setPokemons(initialPokemons.data);
-  }, [initialPokemons]);
+  // console.log("App rendered");
+
+  // const value = useAtomValue(temporaryItem);
+
+  // console.log("value: ", value);
+
+  // useEffect(() => {
+  //   setPokemons(initialPokemons.data);
+  // }, [initialPokemons]);
 
   return (
     <div className="App">
