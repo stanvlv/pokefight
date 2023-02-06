@@ -3,6 +3,8 @@ import { pbClient, jotaiStore } from "../pocketbase/pb";
 import { myself } from "../pocketbase/lobby";
 import { atom } from "jotai";
 
+const PLAYCARDS_COUNTDOWN = 20; // seconds
+
 // So the game state can be split into two parts:
 // 1. Synced state - this is the state that is synced between all players
 // 2. Local state - this is the state that is only relevant to the local player
@@ -56,10 +58,12 @@ function createGameStateSynced () {
         hostLife: 200,
         clientLife: 200,
         hostBoard: [],
+        hostBoardHealth: [],
         clientBoard: [],
-        currentlyPlaying: "host", // host, client
-        countdown: 20, // in seconds, the client has the authority on updating this!
-        // in addition this also contains .client and .host properties which store the client and host ids
+        clientBoardHealth: [],
+        gamePhase: "playCards", // "playCards", "fight"
+        countdown: PLAYCARDS_COUNTDOWN, // in seconds, the client has the authority on updating this!
+        // in addition this also contains .id, .client and .host properties which store the client and host ids
         // but are added later in createHostGameState
     }
 }
@@ -77,6 +81,15 @@ function createClientRequest(requestType, data) {
     return {
         clientId: jotaiStore.get(myself).id,
         type: requestType,
+        data,
+    }
+}
+
+function createGameStateUpdate(updateType, data) {
+    const gameState = jotaiStore.get(syncGameStateAtom);
+    return {
+        gameId: gameState.id,
+        type: updateType,
         data,
     }
 }
@@ -150,15 +163,130 @@ function onGameStateUpdate(data) {
     }
     // if we have a game, and the game id is the same, continue otherwise return
     const syncState = jotaiStore.get(syncGameStateAtom);
-    if (!syncState || syncState.id !== data.record.game_id) {
+    if (!syncState || syncState.id !== data.record.gameId) {
         return;
     }
     if (data.action === "create") {
         // todo: react on state updates (events from the host)
+        const update = data.record;
+        const data = update.data;
+        if (update.type === "fight") {
+            jotaiStore.set(syncGameStateAtom, (old) => updateGameState(old, data));
+        }
     } else {
         // we dont expect any other action
         console.error("Unexpected game state update action: ", data);
     }
+}
+
+function simulateFightingPhase(syncState) {
+    // this will be an array of all the events that happened during the fight
+    // which are basically just the attacks.
+    // the client will then use this to update the game state
+    // Type signature: {attacker: "host" | "client", attackerCardId: number, target: "face" | "card", targetCardId: number, damage: number}[]
+    const result = [];
+
+    // simulates the fighting phase using syncState as the current game state
+    // first, lets map the cards to their actual data
+    const pokemons = jotaiStore.get(pokemonsAtom);
+    // const hostHand = syncState.hostHand.map((id) => jotaiStore.get(pokemons[id - 1]));
+    // const clientHand = syncState.clientHand.map((id) => jotaiStore.get(pokemons[id - 1]));
+    const hostBoard = syncState.hostBoard.map((id) => ({ ...jotaiStore.get(pokemons[id - 1])}));
+    const clientBoard = syncState.clientBoard.map((id) => ({ ...jotaiStore.get(pokemons[id - 1])}));
+    hostBoard.forEach((card, index) => card.health = syncState.hostBoardHealth[index]);
+    clientBoard.forEach((card, index) => card.health = syncState.clientBoardHealth[index]);
+
+    // move order: host, client, host, client, host, client ...
+    const moveOrder = [];
+    let i = 0; let j = 0;
+    let hostTurn = true;
+    for(;;) {
+        if (hostTurn) {
+            if (i < hostBoard.length) {
+                moveOrder.push([hostBoard[i], "host"]);
+                i++;
+            } else {
+                break;
+            }
+        } else {
+            if (j < clientBoard.length) {
+                moveOrder.push([clientBoard[j], "client"]);
+                j++;
+            } else {
+                break;
+            }
+        }
+        hostTurn = !hostTurn;
+    }
+
+    // now we have the move order, lets simulate the fight
+    for (const [card, turnOrder] of moveOrder) {
+        const opponent = turnOrder === "host" ? clientBoard : hostBoard;
+        const randomIndex = Math.floor(Math.random() * (opponent.length + 1)); // +1 to include the face
+        if (randomIndex === opponent.length) {
+            // we hit the face
+            if (turnOrder === "host") {
+                // syncState.clientLife -= card.base.Attack;
+                result.push({attacker: "host", attackerCardId: card.id, target: "face", damage: card.base.Attack});
+            } else {
+                // syncState.hostLife -= card.base.Attack;
+                result.push({attacker: "client", attackerCardId: card.id, target: "face", damage: card.base.Attack});
+            }
+        } else {
+            // we hit a card
+            const targetCard = opponent[randomIndex];
+            // targetCard.health -= card.base.Attack - targetCard.base.Defense;
+            if (turnOrder === "host") {
+                result.push({attacker: "host", attackerCardId: card.id, target: "card", targetCardId: targetCard.id, damage: card.base.Attack});
+            } else {
+                result.push({attacker: "client", attackerCardId: card.id, target: "card", targetCardId: targetCard.id, damage: card.base.Attack});
+            }
+        }
+    }
+
+    return result;
+}
+
+function updateGameState(oldState, events) {
+    // this will update the game state based on the events
+    // and return the new game state
+    const newState = { ...oldState,
+        hostBoard: [...oldState.hostBoard],
+        clientBoard: [...oldState.clientBoard],
+        hostBoardHealth: [...oldState.hostBoardHealth],
+        clientBoardHealth: [...oldState.clientBoardHealth],
+        hostHand: [...oldState.hostHand],
+        clientHand: [...oldState.clientHand],
+    };
+    const pokemons = jotaiStore.get(pokemonsAtom);
+    const hostBoard = newState.hostBoard.map((id) => ({ ...jotaiStore.get(pokemons[id - 1])}));
+    const clientBoard = newState.clientBoard.map((id) => ({ ...jotaiStore.get(pokemons[id - 1])}));
+    hostBoard.forEach((card, index) => card.health = newState.hostBoardHealth[index]);
+    clientBoard.forEach((card, index) => card.health = newState.clientBoardHealth[index]);
+
+    for (const event of events) {
+        if (event.target === "face") {
+            if (event.attacker === "host") {
+                newState.clientLife -= event.damage;
+            } else {
+                newState.hostLife -= event.damage;
+            }
+        } else {
+            // we hit a card
+            const opponent = event.attacker === "host" ? clientBoard : hostBoard;
+            const targetCard = opponent.find((card) => card.id === event.targetCardId);
+            targetCard.health -= event.damage;
+        }
+    }
+
+    // now we have to update the health arrays
+    newState.hostBoardHealth = hostBoard.map((card) => card.health);
+    newState.clientBoardHealth = clientBoard.map((card) => card.health);
+    
+    // now we have to check if any pokemon died
+    newState.hostBoard = hostBoard.filter((card) => card.health > 0).map((card) => card.id);
+    newState.clientBoard = clientBoard.filter((card) => card.health > 0).map((card) => card.id);
+    return newState;
 }
 
 async function onClientRequest(data) {
@@ -189,6 +317,30 @@ async function onClientRequest(data) {
     }
     if (data.action === "create") {
         // todo: react on client requests (events from the client)
+        const request = data.record;
+        if (request.type === "tickSecond") {
+            // The client sent a tickSecond request, we need to update the game state
+            if (syncState.gamePhase === "playCards" && syncState.countdown === 1) {
+                // the countdown reached 1, we need to switch to the next phase
+                const stateChanges = simulateFightingPhase(syncState);
+                const newState = updateGameState(syncState, stateChanges);
+                newState.gamePhase = "fight";
+                const update = createGameStateUpdate("fight", stateChanges);
+                await gameStateUpdateCollection.create(update);
+                jotaiStore.set(syncGameStateAtom, newState);
+            } else if (syncState.gamePhase === "playCards") {
+                // we just need to update the countdown
+                const newState = { ...syncState };
+                newState.countdown--;
+                jotaiStore.set(syncGameStateAtom, newState);
+            } else if (syncState.gamePhase === "fight") {
+                // we need to switch to the next phase
+                const newState = { ...syncState };
+                newState.gamePhase = "playCards";
+                newState.countdown = PLAYCARDS_COUNTDOWN;
+                jotaiStore.set(syncGameStateAtom, newState);
+            }
+        }
     } else {
         // we dont expect any other action
         console.error("Unexpected client request action: ", data);
