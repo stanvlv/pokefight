@@ -1,32 +1,55 @@
 const pokedex = require("../pokedex.json");
+const Pokemon = require("../models/pokemon");
 
-const getPokemon = (req, res) => {
-  const { id } = req.params;
-  const pokemon = pokedex.find((poke) => poke.id === parseInt(id));
-  if (!pokemon) {
-    return res.status(404).send("Pokemon not found");
+
+// database is moved from json file to MongoDB 
+// it is being extracted from there
+
+const getPokemons = async (req, res) => {
+  try {
+    const pokemons = await Pokemon.find({});
+    res.json(pokemons);
+  } catch (error) {
+    res.status(500).send(error.message);
   }
-  res.send(pokemon);
 };
 
-const getPokemonInfo = (req, res) => {
-  const { id, info } = req.params;
-  const pokemon = pokedex.find((poke) => poke.id === parseInt(id));
-  if (!pokemon) {
-    return res.status(404).send("Pokemon not found");
+const getPokemon = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const pokemon = await Pokemon.findOne({ id: id });
+    if (!pokemon) {
+      return res.status(404).send("Pokemon not found");
+    }
+    res.json(pokemon);
+  } catch (error) {
+    res.status(500).send(error.message);
   }
-  if (info === "name") {
-    res.send(pokemon.name);
-  } else if (info === "type") {
-    res.send(pokemon.type);
-  } else if (info === "base") {
-    res.send(pokemon.base);
-  } else {
-    res.status(400).send("Sorry mate");
+};
+
+const getPokemonInfo = async (req, res) => {
+  const { id, info } = req.params;
+  try {
+    const pokemon = await Pokemon.findOne({ id: id });
+    if (!pokemon) {
+      return res.status(404).send("Pokemon not found");
+    }
+    if (info === "name") {
+      res.send(pokemon.name);
+    } else if (info === "type") {
+      res.send(pokemon.type);
+    } else if (info === "base") {
+      res.send(pokemon.base);
+    } else {
+      res.status(400).send("Something went wrong");
+    }
+  } catch (error) {
+    res.status(500).send(error.message);
   }
 };
 
 module.exports = {
+  getPokemons,
   getPokemon,
   getPokemonInfo,
 };

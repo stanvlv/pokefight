@@ -17,10 +17,11 @@ body {
 .tooltip .tooltiptext {
   visibility: hidden;
   width: 120px;
-  bottom: 50%;
+  top: 105%;
+  
   left: 50%;
   margin-left: -60px;
-  background-color: rgb(33, 55, 250);
+  background-color: rgb(255, 0, 0);
   color: #fff;
   text-align: center;
   padding: 5px 0;
@@ -37,6 +38,17 @@ body {
 /* Show the tooltip text when you mouse over the tooltip container */
 .tooltip:hover .tooltiptext {
   visibility: visible;
+}
+
+.tooltip .tooltiptext::after {
+  content: " ";
+  position: absolute;
+  bottom: 100%;  /* At the top of the tooltip */
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: transparent transparent rgb(255, 0, 0) transparent;
 }
 
 .pokemonLogo {
@@ -87,8 +99,21 @@ body {
   text-decoration: inherit;
 }
 
+.nav-link:hover {
+  color: rgb(226, 241, 13) !important;
+}
+
 .form-search {
   display: flex;
   justify-content: center;
   margin-bottom: 3rem;
+}
+
+.leaderboard-table {
+  border: 2px solid forestgreen;
+  width: 800px;
+  height: 200px;
+}
+.leaderboard-table table th {
+  border-bottom: 1px solid black;
 }
