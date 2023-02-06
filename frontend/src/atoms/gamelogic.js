@@ -94,6 +94,15 @@ function createGameStateUpdate(updateType, data) {
     }
 }
 
+// Creates an object that represents an action that was optimistically applied to the synced state,
+// and can be undone if the server rejects the action
+let undoableActions = [];
+function createUndoableAction(checkRemove, undo) {
+    undoableActions.push({
+        checkRemove, undo
+    });
+}
+
 /// Section 2: Dealing with invitations
 
 {
@@ -170,7 +179,13 @@ function onGameStateUpdate(data) {
         // todo: react on state updates (events from the host)
         const update = data.record;
         const data = update.data;
+        // for each undoable action, check if it can be removed
+        undoableActions = undoableActions.filter((a) => !a.checkRemove(update));
         if (update.type === "fight") {
+            for (const action of undoableActions) {
+                action.undo(update);
+            }
+            undoableActions = [];
             jotaiStore.set(syncGameStateAtom, (old) => updateGameState(old, data));
         }
     } else {
@@ -358,6 +373,35 @@ function changeCurrentState(newState) {
         gameStateUpdateCollection.subscribe("*", onGameStateUpdate);
     } else if (newState === "host") {
         // we already subscribed to the client requests in createHostGameState
+    } else {
+        console.error("Unexpected game state: ", currentState);
+    }
+}
+
+/// Section 4: Playing the cards
+
+async function playCard(cardId) {
+    // todo
+    if (currentState === "client") {
+        const req = createClientRequest("playCard", { cardId });
+        jotaiStore.set(syncGameStateAtom, (oldState) => {
+            const newState = { ...oldState };
+            newState.clientHand = newState.clientHand.filter((id) => id !== cardId);
+            newState.clientBoard = [...newState.clientBoard, cardId];
+            return newState;
+        });
+        createUndoableAction((update) => update.type === "playCard" && update.data.cardId === cardId, () => {
+            // the server has not confirmed the request, so we need to undo it
+            jotaiStore.set(syncGameStateAtom, (oldState) => {
+                const newState = { ...oldState };
+                newState.clientHand = [...newState.clientHand, cardId];
+                newState.clientBoard = newState.clientBoard.filter((id) => id !== cardId);
+                return newState;
+            });
+        });
+        await clientRequestCollection.create(req);
+    } else if (currentState === "host") {
+        // todo
     } else {
         console.error("Unexpected game state: ", currentState);
     }
