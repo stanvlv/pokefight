@@ -12,9 +12,9 @@ function AppBarUp() {
       <Container maxWidth="xl">
         <Toolbar disableGutters>
           <img src={`${pokemonLogo}`} style={{ height: "2rem", left: "0", marginRight: "3rem"}} />
-        <Link to="/" className="nav-link">
+        <Link to="/" className="nav-link" >
           <Typography
-            variant="h6"
+            variant="h7"
             noWrap
             sx={{
               mr: 2,
@@ -31,7 +31,7 @@ function AppBarUp() {
           </Link>
           <Link to="/pokemon" className="nav-link">
           <Typography
-            variant="h6"
+            variant="h7"
             noWrap
             sx={{
               mr: 2,
@@ -43,12 +43,12 @@ function AppBarUp() {
               textDecoration: "none",
             }}
           >
-            Pokemon
+           {">"} Pokemon
           </Typography>
           </Link>
             <Link to='/fight' className="nav-link">
           <Typography
-            variant="h6"
+            variant="h7"
             noWrap
             sx={{
               mr: 2,
@@ -60,7 +60,24 @@ function AppBarUp() {
               textDecoration: "none",
             }}
           >
-            Fight
+           {">"} Fight
+          </Typography>
+          </Link>
+          <Link to='/leaderboard' className="nav-link">
+          <Typography
+            variant="h7"
+            noWrap
+            sx={{
+              mr: 2,
+              display: { xs: "none", md: "flex" },
+              fontFamily: "monospace",
+              fontWeight: 400,
+              letterSpacing: ".3rem",
+              color: "inherit",
+              textDecoration: "none",
+            }}
+          >
+            {">"} Leaderboard
           </Typography>
           </Link>
         </Toolbar>
