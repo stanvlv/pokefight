@@ -30,7 +30,7 @@ function PokemonCard({ pokemonAtom }) {
           alt="to come"
         />
         <CardContent className="card-text">
-          <Typography gutterBottom component="div">
+          <Typography gutterBottom component="div" variant="h6">
             {pokemon.name.english}
           </Typography>
           <Typography variant="body2" color="text.secondary">
