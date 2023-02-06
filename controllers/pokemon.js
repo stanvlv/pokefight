@@ -1,17 +1,19 @@
 const pokedex = require("../pokedex.json");
+const Pokemon = require('../database').Pokemon
 
-const getPokemon = (req, res) => {
+
+const getPokemon = async (req, res) => {
   const { id } = req.params;
-  const pokemon = pokedex.find((poke) => poke.id === parseInt(id));
+  const pokemon = await Pokemon.findOne({ id: id});
   if (!pokemon) {
     return res.status(404).send("Pokemon not found");
   }
   res.send(pokemon);
 };
 
-const getPokemonInfo = (req, res) => {
+const getPokemonInfo =  async (req, res) => {
   const { id, info } = req.params;
-  const pokemon = pokedex.find((poke) => poke.id === parseInt(id));
+  const pokemon = await Pokemon.findOne({ id: id});
   if (!pokemon) {
     return res.status(404).send("Pokemon not found");
   }
