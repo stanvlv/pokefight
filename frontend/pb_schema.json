@@ -328,6 +328,43 @@
           "maxSelect": 1,
           "displayFields": []
         }
+      },
+      {
+        "id": "u2pyqvjx",
+        "name": "clientCardsPlayed",
+        "type": "number",
+        "system": false,
+        "required": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null
+        }
+      },
+      {
+        "id": "xxcwgyi0",
+        "name": "hostCardsPlayed",
+        "type": "number",
+        "system": false,
+        "required": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null
+        }
+      },
+      {
+        "id": "bcevpd5m",
+        "name": "winState",
+        "type": "text",
+        "system": false,
+        "required": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
       }
     ],
     "listRule": "",
@@ -384,7 +421,7 @@
     "viewRule": "",
     "createRule": "",
     "updateRule": null,
-    "deleteRule": null,
+    "deleteRule": "",
     "options": {}
   },
   {
@@ -434,7 +471,7 @@
     "viewRule": "",
     "createRule": "",
     "updateRule": null,
-    "deleteRule": null,
+    "deleteRule": "",
     "options": {}
   }
 ]
