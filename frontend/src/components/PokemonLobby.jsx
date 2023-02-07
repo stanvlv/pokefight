@@ -30,6 +30,7 @@ import {
 import { chatArrayAtom, writeToChat } from "../pocketbase/chat";
 import { CSSGrid } from "./styled/commons";
 import { useMemo } from "react";
+import axios from 'axios'
 
 export default function PokemonLobby() {
   const lobby = useAtomValue(lobbyArray);
@@ -60,10 +61,22 @@ export default function PokemonLobby() {
     }
   });
 
-  const handleRegisterUser = () => {
+  const handleRegisterUser = async () => {
     setSavedName(userName);
     setUserDialogOpened(false);
     addMyself(userName, "available");
+    try {
+      const response = await axios.post(`http://localhost:3001/users`,
+       { nickname: userName })
+       .then(res => console.log(res.data));
+    } catch (error) {
+      console.error(error)
+      if (error.response.status === 409) {
+        alert("User already exists. Please choose a different name.")
+      } else {
+        alert("Something went wrong. Please try again later")
+      }
+    }
   };
 
   const handleChatMessageSubmit = (e) => {
@@ -92,6 +105,16 @@ export default function PokemonLobby() {
   useEffect(() => {
     bottomDiv.current?.scrollIntoView({ behavior: "smooth" });
   }, [reversedChatArray]);
+
+  useEffect(() => {
+    console.log(savedName + "awd2")
+    console.log(userName + "dawsdsdaw3")
+    axios.post(`http://localhost:3001/users`, {
+      nickname: `${myself}`
+    })
+    .then(res => console.log(res))
+    .catch(err => console.error(err))
+  }, [userName])
 
   return (
     <>

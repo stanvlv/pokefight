@@ -35,7 +35,7 @@ const createUser = async (req, res) => {
     const existingUser = await Users.findOne({ nickname });
     if (existingUser) {
       return res
-        .status(400)
+        .status(409)
         .send("There is already an user with the same nickname");
     }
     const user = new Users({
