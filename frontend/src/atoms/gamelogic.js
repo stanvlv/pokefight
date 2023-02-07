@@ -85,7 +85,10 @@ function createGameStateSynced () {
         hostBoardHealth: [],
         clientBoard: [],
         clientBoardHealth: [],
+        clientCardsPlayed: 0, // number of cards played by the client in the current turn
+        hostCardsPlayed: 0, // number of cards played by the host in the current turn
         gamePhase: "playCards", // "playCards", "fight"
+        winState: "none", // "none", "host", "client", "draw"
         countdown: PLAYCARDS_COUNTDOWN, // in seconds, the client has the authority on updating this!
         // in addition this also contains .id, .client and .host properties which store the client and host ids
         // but are added later in createHostGameState
@@ -145,6 +148,21 @@ function clearTimers() {
     if (tickTimer) {
         clearInterval(tickTimer);
     }
+}
+
+// section 1b detect win condition on state
+
+function detectWinCondition(state) {
+    if (state.hostLife < 0 && state.clientLife < 0) {
+        return "draw";
+    }
+    if (state.hostLife < 0) {
+        return "client";
+    }
+    if (state.clientLife < 0) {
+        return "host";
+    }
+    return "none";
 }
 
 /// Section 2: Dealing with invitations
@@ -241,16 +259,18 @@ function onGameStateUpdate(dataInc) {
             // set game phase to "fight"
             jotaiStore.set(syncGameStateAtom, (old) => ({...old, gamePhase: "fight"}));
             // set the timer to show the fight
-            // todo: instead send the message after the animation is done
-            initializeTimer(async () => {
-                // send tick to change the game phase to "playCards"
-                const update = createClientRequest("tickSecond", {});
-                await clientRequestCollection.create(update);
-                clearTimers();
-            }, 5000);
+            if (jotaiStore.get(syncGameStateAtom).winState === "none") {
+                // todo: instead send the message after the animation is done
+                initializeTimer(async () => {
+                    // send tick to change the game phase to "playCards"
+                    const update = createClientRequest("tickSecond", {});
+                    await clientRequestCollection.create(update);
+                    clearTimers();
+                }, 5000);
+            }
         } else if (update.type === "playCards") {
             // set game phase to "playCards"
-            jotaiStore.set(syncGameStateAtom, (old) => ({...old, gamePhase: "playCards", countdown: PLAYCARDS_COUNTDOWN}));
+            jotaiStore.set(syncGameStateAtom, (old) => ({...old, gamePhase: "playCards", countdown: PLAYCARDS_COUNTDOWN, clientCardsPlayed: 0, hostCardsPlayed: 0}));
             // set the timer to issue game ticks
             initializeTimer(async () => {
                 const update = createClientRequest("tickSecond", {});
@@ -269,6 +289,7 @@ function onGameStateUpdate(dataInc) {
                 const pokemons = jotaiStore.get(pokemonsAtom);
                 const pokemon = jotaiStore.get(pokemons[data.cardId - 1]);
                 newState.hostBoardHealth = [...newState.hostBoardHealth, pokemon.base.HP];
+                newState.hostCardsPlayed += 1;
                 return newState;
             });
         }
@@ -382,6 +403,14 @@ function updateGameState(oldState, events) {
     console.log(hostBoard, clientBoard);
     newState.hostBoard = hostBoard.filter((card) => card.health > 0).map((card) => card.id);
     newState.clientBoard = clientBoard.filter((card) => card.health > 0).map((card) => card.id);
+    newState.winState = detectWinCondition(newState);
+    if (newState.winState === "none") {
+        const [newDeck, newHostHand] = dealCards(newState.cardDeck, newState.hostHand);
+        const [newDeck2, newClientHand] = dealCards(newDeck, newState.clientHand);
+        newState.cardDeck = newDeck2;
+        newState.hostHand = newHostHand;
+        newState.clientHand = newClientHand;
+    }
     return newState;
 }
 
@@ -448,6 +477,7 @@ async function onClientRequest(data) {
                 const pokemons = jotaiStore.get(pokemonsAtom);
                 const pokemon = jotaiStore.get(pokemons[cardId - 1]);
                 newState.clientBoardHealth = [...newState.clientBoardHealth, pokemon.base.HP];
+                newState.clientCardsPlayed += 1;
                 return newState;
             });
             // acknowledge the request by sending the update
@@ -479,8 +509,30 @@ function changeCurrentState(newState) {
 /// Section 4: Playing the cards
 
 export async function playCard(cardId) {
-    let myCurrentState = jotaiStore.get(currentState);
+    const myCurrentState = jotaiStore.get(currentState);
+    const syncState = jotaiStore.get(syncGameStateAtom);
+    const winState = syncState.winState;
+    if (winState !== "none") {
+        // cant play cards if the game is over
+        return;
+    }
+    if (syncState.gamePhase !== "playCards") {
+        // cant play cards if its not the playCards phase
+        return;
+    }
     if (myCurrentState === "client") {
+        // Check if we can play the card
+        if (syncState.clientCardsPlayed >= 2) {
+            // we already played 2 cards
+            console.log("cant play more than 2 cards per turn")
+            return;
+        }
+        if (syncState.clientBoard.length >= 5) {
+            // we already have 5 cards on the board
+            console.log("cant play more than 5 cards on the board")
+            return;
+        }
+
         const req = createClientRequest("playCard", { cardId });
         jotaiStore.set(syncGameStateAtom, (oldState) => {
             const newState = { ...oldState };
@@ -491,6 +543,7 @@ export async function playCard(cardId) {
             const pokemon = jotaiStore.get(pokemons[cardId - 1]);
             console.log("playing pokemon id ", cardId, " name ", pokemon.name, " id ", pokemon.id);
             newState.clientBoardHealth = [...newState.clientBoardHealth, pokemon.base.HP];
+            newState.clientCardsPlayed += 1;
             return newState;
         });
         createUndoableAction((update) => update.type === "playCard" && update.data.cardId === cardId, () => {
@@ -501,12 +554,24 @@ export async function playCard(cardId) {
                 const clientBoardIndex = newState.clientBoard.indexOf(cardId);
                 newState.clientBoard = newState.clientBoard.filter((id) => id !== cardId);
                 newState.clientBoardHealth = newState.clientBoardHealth.filter((_, index) => index !== clientBoardIndex);
+                newState.clientCardsPlayed -= 1;
                 return newState;
             });
         });
         await clientRequestCollection.create(req);
     } else if (myCurrentState === "host") {
-        // todo
+        // Check if we can play the card
+        if (syncState.hostCardsPlayed >= 2) {
+            // we already played 2 cards
+            console.log("cant play more than 2 cards per turn")
+            return;
+        }
+        if (syncState.hostBoard.length >= 5) {
+            // we already have 5 cards on the board
+            console.log("cant play more than 5 cards on the board")
+            return;
+        }
+
         jotaiStore.set(syncGameStateAtom, (oldState) => {
             const newState = { ...oldState };
             newState.hostHand = newState.hostHand.filter((id) => id !== cardId);
@@ -515,6 +580,7 @@ export async function playCard(cardId) {
             const pokemons = jotaiStore.get(pokemonsAtom);
             const pokemon = jotaiStore.get(pokemons[cardId - 1]);
             newState.hostBoardHealth = [...newState.hostBoardHealth, pokemon.base.HP];
+            newState.hostCardsPlayed += 1;
             return newState;
         });
         const update = createGameStateUpdate("playCard", { cardId, target: "hostBoard" });
