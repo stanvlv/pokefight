@@ -26,6 +26,11 @@ const clientRequestCollection = pbClient.collection("gameClientRequest");
 const gameStateUpdateCollection = pbClient.collection("gameStateUpdate");
 const invitationCollection = pbClient.collection("gameInvitation");
 
+// const allClRequests = await clientRequestCollection.getFullList();
+// for (const clRequest of allClRequests) {
+//     await clientRequestCollection.delete(clRequest.id);
+// }
+
 const currentState = atom("idle"); // idle, host, client
 const openInvitation = atom(null); // the invitation that we initiated. Contains {id}
 const allInvitationsAtom = atom([]); // all invitations that we received. Contains [{id, host}]
@@ -37,6 +42,18 @@ const syncGameStateAtom = atom(null);
 const localGameStateAtom = atom(null);
 
 export const syncGameStateAtomView = atom((get) => get(syncGameStateAtom));
+
+export const recentCombatLogAtom = atom([]);
+
+/// Section 0: resetting the game state
+export function resetGameState () {
+    // we reset the game state
+    changeCurrentState("idle");
+    jotaiStore.set(openInvitation, null);
+    jotaiStore.set(syncGameStateAtom, null);
+    jotaiStore.set(recentCombatLogAtom, []);
+    gameStateCollection.unsubscribe();
+}
 
 /// Section 1: constructors for objects that we use in this module
 
@@ -380,18 +397,24 @@ function updateGameState(oldState, events) {
     hostBoard.forEach((card, index) => card.health = newState.hostBoardHealth[index]);
     clientBoard.forEach((card, index) => card.health = newState.clientBoardHealth[index]);
 
+    const combatLog = [];
+
     for (const event of events) {
+        const attacker = event.attacker === "host" ? hostBoard : clientBoard;
+        const attackerCard = attacker.find((card) => card.id === event.attackerCardId);
         if (event.target === "face") {
             if (event.attacker === "host") {
                 newState.clientLife -= event.damage;
             } else {
                 newState.hostLife -= event.damage;
             }
+            combatLog.push(`${attackerCard.name.english} attacked the face for ${event.damage} damage, leaving the opponent with ${event.attacker === "host" ? newState.clientLife : newState.hostLife} health.`);
         } else {
             // we hit a card
             const opponent = event.attacker === "host" ? clientBoard : hostBoard;
             const targetCard = opponent.find((card) => card.id === event.targetCardId);
             targetCard.health -= event.damage;
+            combatLog.push(`${attackerCard.name.english} attacked a card ${targetCard.name.english} for ${event.damage} damage, leaving it with ${targetCard.health} health.`);
         }
     }
 
@@ -411,6 +434,7 @@ function updateGameState(oldState, events) {
         newState.hostHand = newHostHand;
         newState.clientHand = newClientHand;
     }
+    jotaiStore.set(recentCombatLogAtom, combatLog);
     return newState;
 }
 
@@ -463,6 +487,8 @@ async function onClientRequest(data) {
                 const newState = { ...syncState };
                 newState.gamePhase = "playCards";
                 newState.countdown = PLAYCARDS_COUNTDOWN;
+                newState.hostCardsPlayed = 0;
+                newState.clientCardsPlayed = 0;
                 const update = createGameStateUpdate("playCards", {});
                 await gameStateUpdateCollection.create(update);
                 jotaiStore.set(syncGameStateAtom, newState);
@@ -514,10 +540,13 @@ export async function playCard(cardId) {
     const winState = syncState.winState;
     if (winState !== "none") {
         // cant play cards if the game is over
+        console.log(winState)
+        console.log("cant play cards if the game is over")
         return;
     }
     if (syncState.gamePhase !== "playCards") {
         // cant play cards if its not the playCards phase
+        console.log("cant play cards if its not the playCards phase")
         return;
     }
     if (myCurrentState === "client") {
