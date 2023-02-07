@@ -52,6 +52,7 @@ export function resetGameState () {
     jotaiStore.set(openInvitation, null);
     jotaiStore.set(syncGameStateAtom, null);
     jotaiStore.set(recentCombatLogAtom, []);
+    clearTimers();
     gameStateCollection.unsubscribe();
 }
 
