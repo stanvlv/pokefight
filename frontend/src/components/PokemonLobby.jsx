@@ -30,10 +30,12 @@ import {
 import { chatArrayAtom, writeToChat } from "../pocketbase/chat";
 import { CSSGrid } from "./styled/commons";
 import { useMemo } from "react";
+import { invitationsAtom, createInvitation, acceptInvitation } from "../atoms/gamelogic";
 
 export default function PokemonLobby() {
   const lobby = useAtomValue(lobbyArray);
   const chatArray = useAtomValue(chatArrayAtom);
+  const invitations = useAtomValue(invitationsAtom);
   const [savedName, setSavedName] = useAtom(savedUserName);
   const myselfValue = useAtomValue(myself);
   const [userDialogOpened, setUserDialogOpened] = useState(savedName === null);
@@ -72,6 +74,10 @@ export default function PokemonLobby() {
     setChatMessage("");
   };
 
+  const handleGameInvite = (inv) => {
+    acceptInvitation(inv.id);
+  }
+
   useEffect(() => {
     // if we have savedName, and myself is null, register with the saved name
     if (savedName && myselfValue === null) {
@@ -95,7 +101,6 @@ export default function PokemonLobby() {
 
   return (
     <>
-      <Typography variant="body1">{"This is game's lobby!"}</Typography>
       <CSSGrid sx={{ gap: 2, maxHeight: "90vh" }}>
         <Paper elevation={4} sx={{ minWidth: "20em" }}>
           <List>
@@ -123,6 +128,20 @@ export default function PokemonLobby() {
                 );
               })}
           </List>
+          <List>
+            {
+              invitations.map((inv) => {
+                const user = lobby.find((user) => user.id === inv.host);
+                return (
+                <ListItemButton key={inv.id} onClick={() => handleGameInvite(inv)}>
+                  <ListItemText primary={`Invite from ${user.name}`} />
+                </ListItemButton>
+              )})
+            }
+          </List>
+          <Box component="form" onSubmit={(e) => e.preventDefault()}>
+            <Button onClick={createInvitation}>Create game invitation</Button>
+          </Box>
         </Paper>
         <Paper elevation={4}>
           <Stack direction="column" sx={{ maxHeight: "100%", p: 1 }} gap={2}>

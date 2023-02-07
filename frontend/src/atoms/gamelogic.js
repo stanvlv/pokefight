@@ -5,6 +5,11 @@ import { atom } from "jotai";
 
 const PLAYCARDS_COUNTDOWN = 20; // seconds
 
+let sendTicks = true;
+export function invertTicks() {
+    sendTicks = !sendTicks;
+}
+
 // So the game state can be split into two parts:
 // 1. Synced state - this is the state that is synced between all players
 // 2. Local state - this is the state that is only relevant to the local player
@@ -19,16 +24,28 @@ const PLAYCARDS_COUNTDOWN = 20; // seconds
 export const gameStateCollection = pbClient.collection("gameState");
 const clientRequestCollection = pbClient.collection("gameClientRequest");
 const gameStateUpdateCollection = pbClient.collection("gameStateUpdate");
-export const invitationCollection = pbClient.collection("gameInvitation");
+const invitationCollection = pbClient.collection("gameInvitation");
 
-export const currentState = atom("idle"); // idle, host, client
-export const openInvitation = atom(null); // the invitation that we initiated. Contains {id}
-export const allInvitationsAtom = atom([]); // all invitations that we received. Contains [{id, host}]
+const currentState = atom("idle"); // idle, host, client
+const openInvitation = atom(null); // the invitation that we initiated. Contains {id}
+const allInvitationsAtom = atom([]); // all invitations that we received. Contains [{id, host}]
+
+export const invitationsAtom = atom ((get) => get(allInvitationsAtom));
+export const currentStateAtom = atom((get) => get(currentState));
 
 const syncGameStateAtom = atom(null);
 const localGameStateAtom = atom(null);
 
+export const syncGameStateAtomView = atom((get) => get(syncGameStateAtom));
+
 /// Section 1: constructors for objects that we use in this module
+
+function dealCards ( deck, hand ) {
+    // we drop all previous cards and deal 5 new cards
+    const newHand = deck.slice(0, 5);
+    const newDeck = deck.slice(5);
+    return [newDeck, newHand];
+}
 
 function createGameStateSynced () {
     // assumption: both client and the host have the same card array in the same order in pokemonsAtom
@@ -41,6 +58,8 @@ function createGameStateSynced () {
         return Array.from({length: cardAtoms.length}, (_, i) => i + 1);
     })();
 
+    console.log("cards", cards);
+
     // we shuffle the cards
     const shuffle = (a) => {
         for (let i = a.length - 1; i > 0; i--) {
@@ -50,11 +69,16 @@ function createGameStateSynced () {
     }
     shuffle(cards);
 
+    console.log("shuffled cards", cards);
+
+    const [dealtOnce, hostHand] = dealCards(cards, []);
+    const [dealtTwice, clientHand] = dealCards(dealtOnce, []);
+
     return {
         // this contains the initial state of the game
-        cardDeck: cards,
-        hostHand: [],
-        clientHand: [],
+        cardDeck: dealtTwice,
+        hostHand: hostHand,
+        clientHand: clientHand,
         hostLife: 200,
         clientLife: 200,
         hostBoard: [],
@@ -70,8 +94,11 @@ function createGameStateSynced () {
 
 export async function createInvitation() {
     const invitation = {
-        host: jotaiStore.get(myself).id
+        host: jotaiStore.get(myself).id,
+        '$autoCancel': false,
     };
+    // subscribe to listen to client response to the invitation
+    clientRequestCollection.subscribe("*", onClientRequest);
     const pbEntry = await invitationCollection.create(invitation);
     jotaiStore.set(openInvitation, pbEntry);
     return pbEntry;
@@ -81,6 +108,7 @@ function createClientRequest(requestType, data) {
     return {
         clientId: jotaiStore.get(myself).id,
         type: requestType,
+        '$autoCancel': false,
         data,
     }
 }
@@ -90,6 +118,7 @@ function createGameStateUpdate(updateType, data) {
     return {
         gameId: gameState.id,
         type: updateType,
+        '$autoCancel': false,
         data,
     }
 }
@@ -101,6 +130,21 @@ function createUndoableAction(checkRemove, undo) {
     undoableActions.push({
         checkRemove, undo
     });
+}
+
+let tickTimer = null;
+function initializeTimer(fun, timerMs) {
+    if (tickTimer) {
+        clearInterval(tickTimer);
+    }
+    if (jotaiStore.get(currentState) === "client") {
+        tickTimer = setInterval(() => sendTicks && fun(), timerMs ?? 1000);
+    }
+}
+function clearTimers() {
+    if (tickTimer) {
+        clearInterval(tickTimer);
+    }
 }
 
 /// Section 2: Dealing with invitations
@@ -131,12 +175,19 @@ function onGameState(data) {
             // we can now start the game
             gameStateCollection.unsubscribe("*");
             jotaiStore.set(syncGameStateAtom, newState);
-            jotaiStore.set(currentState, "client");
+            // jotaiStore.set(currentState, "client");
+            changeCurrentState("client");
+            // the game starts in the playCards phase, so we initialize the timer
+            initializeTimer(async () => {
+                const update = createClientRequest("tickSecond", {});
+                jotaiStore.set(syncGameStateAtom, (old) => ({...old, countdown: old.countdown - 1}));
+                await clientRequestCollection.create(update);
+            });
         }
     }
 }
 
-async function acceptInvitation(invitationId) {
+export async function acceptInvitation(invitationId) {
     // we are the client, accepting the invitation from the host
     const joinRequest = createClientRequest("gameJoin", {invitationId});
     // subscribe to the game state updates, so that we see when we were accepted
@@ -159,25 +210,25 @@ async function createHostGameState(opponentId) {
     const state = createGameStateSynced();
     state.client = opponentId;
     state.host = jotaiStore.get(myself).id;
-    clientRequestCollection.subscribe("*", onClientRequest);
+    // clientRequestCollection.subscribe("*", onClientRequest);
     const pbEntry = await gameStateCollection.create(state);
     changeCurrentState("host");
     return pbEntry;
 }
 
-function onGameStateUpdate(data) {
+function onGameStateUpdate(dataInc) {
     if (currentState === "host") {
         // this is just what we sent ourselves, ignore
         return;
     }
     // if we have a game, and the game id is the same, continue otherwise return
     const syncState = jotaiStore.get(syncGameStateAtom);
-    if (!syncState || syncState.id !== data.record.gameId) {
+    if (!syncState || syncState.id !== dataInc.record.gameId) {
         return;
     }
-    if (data.action === "create") {
+    if (dataInc.action === "create") {
         // todo: react on state updates (events from the host)
-        const update = data.record;
+        const update = dataInc.record;
         const data = update.data;
         // for each undoable action, check if it can be removed
         undoableActions = undoableActions.filter((a) => !a.checkRemove(update));
@@ -187,10 +238,43 @@ function onGameStateUpdate(data) {
             }
             undoableActions = [];
             jotaiStore.set(syncGameStateAtom, (old) => updateGameState(old, data));
+            // set game phase to "fight"
+            jotaiStore.set(syncGameStateAtom, (old) => ({...old, gamePhase: "fight"}));
+            // set the timer to show the fight
+            // todo: instead send the message after the animation is done
+            initializeTimer(async () => {
+                // send tick to change the game phase to "playCards"
+                const update = createClientRequest("tickSecond", {});
+                await clientRequestCollection.create(update);
+                clearTimers();
+            }, 5000);
+        } else if (update.type === "playCards") {
+            // set game phase to "playCards"
+            jotaiStore.set(syncGameStateAtom, (old) => ({...old, gamePhase: "playCards", countdown: PLAYCARDS_COUNTDOWN}));
+            // set the timer to issue game ticks
+            initializeTimer(async () => {
+                const update = createClientRequest("tickSecond", {});
+                jotaiStore.set(syncGameStateAtom, (old) => ({...old, countdown: old.countdown - 1}));
+                await clientRequestCollection.create(update);
+            });
+        } else if (update.type === "playCard") {
+            if (data.target === "clientBoard") {
+                // we can just ignore this, because we already optimistically updated the game state
+                return;
+            }
+            jotaiStore.set(syncGameStateAtom, (old) => {
+                const newState = {...old};
+                newState.hostHand = newState.hostHand.filter((id) => id !== data.cardId);
+                newState.hostBoard = [... newState.hostBoard, data.cardId];
+                const pokemons = jotaiStore.get(pokemonsAtom);
+                const pokemon = jotaiStore.get(pokemons[data.cardId - 1]);
+                newState.hostBoardHealth = [...newState.hostBoardHealth, pokemon.base.HP];
+                return newState;
+            });
         }
     } else {
         // we dont expect any other action
-        console.error("Unexpected game state update action: ", data);
+        console.error("Unexpected game state update action: ", dataInc);
     }
 }
 
@@ -215,20 +299,16 @@ function simulateFightingPhase(syncState) {
     const moveOrder = [];
     let i = 0; let j = 0;
     let hostTurn = true;
-    for(;;) {
+    for(; i < hostBoard.length || j < clientBoard.length;) {
         if (hostTurn) {
             if (i < hostBoard.length) {
                 moveOrder.push([hostBoard[i], "host"]);
                 i++;
-            } else {
-                break;
             }
         } else {
             if (j < clientBoard.length) {
                 moveOrder.push([clientBoard[j], "client"]);
                 j++;
-            } else {
-                break;
             }
         }
         hostTurn = !hostTurn;
@@ -295,10 +375,11 @@ function updateGameState(oldState, events) {
     }
 
     // now we have to update the health arrays
-    newState.hostBoardHealth = hostBoard.map((card) => card.health);
-    newState.clientBoardHealth = clientBoard.map((card) => card.health);
+    newState.hostBoardHealth = hostBoard.filter((card) => card.health > 0).map((card) => card.health);
+    newState.clientBoardHealth = clientBoard.filter((card) => card.health > 0).map((card) => card.health);
     
     // now we have to check if any pokemon died
+    console.log(hostBoard, clientBoard);
     newState.hostBoard = hostBoard.filter((card) => card.health > 0).map((card) => card.id);
     newState.clientBoard = clientBoard.filter((card) => card.health > 0).map((card) => card.id);
     return newState;
@@ -327,7 +408,7 @@ async function onClientRequest(data) {
             }
         }
     }
-    if (!syncState || syncState.id !== data.record.game_id) {
+    if (!syncState || syncState.client !== data.record.clientId) {
         return;
     }
     if (data.action === "create") {
@@ -353,8 +434,25 @@ async function onClientRequest(data) {
                 const newState = { ...syncState };
                 newState.gamePhase = "playCards";
                 newState.countdown = PLAYCARDS_COUNTDOWN;
+                const update = createGameStateUpdate("playCards", {});
+                await gameStateUpdateCollection.create(update);
                 jotaiStore.set(syncGameStateAtom, newState);
             }
+        } else if (request.type === "playCard") {
+            // the client wants to play a card
+            const cardId = request.data.cardId;
+            jotaiStore.set(syncGameStateAtom, (oldState) => {
+                const newState = { ...oldState };
+                newState.clientHand = newState.clientHand.filter((id) => id !== cardId);
+                newState.clientBoard = [...newState.clientBoard, cardId];
+                const pokemons = jotaiStore.get(pokemonsAtom);
+                const pokemon = jotaiStore.get(pokemons[cardId - 1]);
+                newState.clientBoardHealth = [...newState.clientBoardHealth, pokemon.base.HP];
+                return newState;
+            });
+            // acknowledge the request by sending the update
+            const update = createGameStateUpdate("playCard", { cardId, target: "clientBoard" });
+            await gameStateUpdateCollection.create(update);
         }
     } else {
         // we dont expect any other action
@@ -374,20 +472,25 @@ function changeCurrentState(newState) {
     } else if (newState === "host") {
         // we already subscribed to the client requests in createHostGameState
     } else {
-        console.error("Unexpected game state: ", currentState);
+        console.error("Unexpected game state: ", newState);
     }
 }
 
 /// Section 4: Playing the cards
 
-async function playCard(cardId) {
-    // todo
-    if (currentState === "client") {
+export async function playCard(cardId) {
+    let myCurrentState = jotaiStore.get(currentState);
+    if (myCurrentState === "client") {
         const req = createClientRequest("playCard", { cardId });
         jotaiStore.set(syncGameStateAtom, (oldState) => {
             const newState = { ...oldState };
             newState.clientHand = newState.clientHand.filter((id) => id !== cardId);
             newState.clientBoard = [...newState.clientBoard, cardId];
+            // get pokemons HP value
+            const pokemons = jotaiStore.get(pokemonsAtom);
+            const pokemon = jotaiStore.get(pokemons[cardId - 1]);
+            console.log("playing pokemon id ", cardId, " name ", pokemon.name, " id ", pokemon.id);
+            newState.clientBoardHealth = [...newState.clientBoardHealth, pokemon.base.HP];
             return newState;
         });
         createUndoableAction((update) => update.type === "playCard" && update.data.cardId === cardId, () => {
@@ -395,19 +498,38 @@ async function playCard(cardId) {
             jotaiStore.set(syncGameStateAtom, (oldState) => {
                 const newState = { ...oldState };
                 newState.clientHand = [...newState.clientHand, cardId];
+                const clientBoardIndex = newState.clientBoard.indexOf(cardId);
                 newState.clientBoard = newState.clientBoard.filter((id) => id !== cardId);
+                newState.clientBoardHealth = newState.clientBoardHealth.filter((_, index) => index !== clientBoardIndex);
                 return newState;
             });
         });
         await clientRequestCollection.create(req);
-    } else if (currentState === "host") {
+    } else if (myCurrentState === "host") {
         // todo
+        jotaiStore.set(syncGameStateAtom, (oldState) => {
+            const newState = { ...oldState };
+            newState.hostHand = newState.hostHand.filter((id) => id !== cardId);
+            newState.hostBoard = [...newState.hostBoard, cardId];
+            // get pokemons HP value
+            const pokemons = jotaiStore.get(pokemonsAtom);
+            const pokemon = jotaiStore.get(pokemons[cardId - 1]);
+            newState.hostBoardHealth = [...newState.hostBoardHealth, pokemon.base.HP];
+            return newState;
+        });
+        const update = createGameStateUpdate("playCard", { cardId, target: "hostBoard" });
+        await gameStateUpdateCollection.create(update);
     } else {
-        console.error("Unexpected game state: ", currentState);
+        console.error("Unexpected game state: ", myCurrentState);
     }
 }
 
 // function to test the game logic without the frontend
 window.game = (command, args) => {
-
+    if (command === "playCard") {
+        playCard(args);
+    }
 }
+
+// Q: how to undo last 2 commits in git without losing changes?
+// A: https://stackoverflow.com/questions/927358/how-to-undo-the-last-two-commits-in-git-without-losing-any-changes

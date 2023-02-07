@@ -5,12 +5,12 @@ import Home from './components/Home';
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import PokemonInfo from './components/PokemonInfo';
 import PokemonDetail from './components/PokemonDetail';
-import PokemonLobby from './components/PokemonLobby';
 import axios from 'axios';
 import { CssBaseline } from '@mui/material';
 import { pokemonsAtom } from './atoms/pokemons';
 import { useAtom, useAtomValue } from 'jotai';
 import { useEffect } from 'react';
+import PokemonGame from './components/PokemonGame';
 
 const router = createBrowserRouter([{
   path: "/",
@@ -35,7 +35,7 @@ const router = createBrowserRouter([{
     element: <PokemonDetail />
   }, {
     path: "/fight",
-    element: <PokemonLobby />
+    element: <PokemonGame />
   }]
 }])
 

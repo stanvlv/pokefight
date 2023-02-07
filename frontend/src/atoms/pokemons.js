@@ -7,7 +7,7 @@ import axios from "axios";
 export const pokemonsAtom = atom([]);
 // This is a flag to indicate whether the pokemons have been fetched or not
 // Since we only ever use defaultStore, this flag can be global
-let pokemonsArrived = false;
+export let pokemonsArrived = false;
 
 pokemonsAtom.onMount = (setValue) => {
   let active = true;
