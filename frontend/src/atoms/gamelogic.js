@@ -65,13 +65,14 @@ function dealCards ( deck, hand ) {
     return [newDeck, newHand];
 }
 
-function createGameStateSynced () {
+async function createGameStateSynced () {
     // assumption: both client and the host have the same card array in the same order in pokemonsAtom
     // in this case we dont have to extract cards from the atoms and trigger unnecessary fetches
 
     // instead we can just store an array of card ids
-    const cards = (() => { 
-        const cardAtoms = jotaiStore.get(pokemonsAtom);
+    const cards = await (async () => { 
+        const cardAtoms = await jotaiStore.get(pokemonsAtom);
+        console.log("cardAtoms", cardAtoms);
         // we use pokemon id as the card id
         return Array.from({length: cardAtoms.length}, (_, i) => i + 1);
     })();
@@ -243,7 +244,7 @@ async function clearInvitation() {
 /// Section 3: Creating the game state and initializing the game
 
 async function createHostGameState(opponentId) {
-    const state = createGameStateSynced();
+    const state = await createGameStateSynced();
     state.client = opponentId;
     state.host = jotaiStore.get(myself).id;
     // clientRequestCollection.subscribe("*", onClientRequest);
@@ -252,7 +253,7 @@ async function createHostGameState(opponentId) {
     return pbEntry;
 }
 
-function onGameStateUpdate(dataInc) {
+async function onGameStateUpdate(dataInc) {
     if (currentState === "host") {
         // this is just what we sent ourselves, ignore
         return;
@@ -273,7 +274,11 @@ function onGameStateUpdate(dataInc) {
                 action.undo(update);
             }
             undoableActions = [];
-            jotaiStore.set(syncGameStateAtom, (old) => updateGameState(old, data));
+            // Q: does jotai store .set() work with async functions?
+            // jotaiStore.set(syncGameStateAtom, (old) => updateGameState(old, data));
+            const oldState = jotaiStore.get(syncGameStateAtom);
+            const newState = await updateGameState(oldState, data);
+            jotaiStore.set(syncGameStateAtom, newState);
             // set game phase to "fight"
             jotaiStore.set(syncGameStateAtom, (old) => ({...old, gamePhase: "fight"}));
             // set the timer to show the fight
@@ -300,11 +305,11 @@ function onGameStateUpdate(dataInc) {
                 // we can just ignore this, because we already optimistically updated the game state
                 return;
             }
+            const pokemons = await jotaiStore.get(pokemonsAtom);
             jotaiStore.set(syncGameStateAtom, (old) => {
                 const newState = {...old};
                 newState.hostHand = newState.hostHand.filter((id) => id !== data.cardId);
                 newState.hostBoard = [... newState.hostBoard, data.cardId];
-                const pokemons = jotaiStore.get(pokemonsAtom);
                 const pokemon = jotaiStore.get(pokemons[data.cardId - 1]);
                 newState.hostBoardHealth = [...newState.hostBoardHealth, pokemon.base.HP];
                 newState.hostCardsPlayed += 1;
@@ -317,7 +322,7 @@ function onGameStateUpdate(dataInc) {
     }
 }
 
-function simulateFightingPhase(syncState) {
+async function simulateFightingPhase(syncState) {
     // this will be an array of all the events that happened during the fight
     // which are basically just the attacks.
     // the client will then use this to update the game state
@@ -326,7 +331,7 @@ function simulateFightingPhase(syncState) {
 
     // simulates the fighting phase using syncState as the current game state
     // first, lets map the cards to their actual data
-    const pokemons = jotaiStore.get(pokemonsAtom);
+    const pokemons = await jotaiStore.get(pokemonsAtom);
     // const hostHand = syncState.hostHand.map((id) => jotaiStore.get(pokemons[id - 1]));
     // const clientHand = syncState.clientHand.map((id) => jotaiStore.get(pokemons[id - 1]));
     const hostBoard = syncState.hostBoard.map((id) => ({ ...jotaiStore.get(pokemons[id - 1])}));
@@ -381,7 +386,7 @@ function simulateFightingPhase(syncState) {
     return result;
 }
 
-function updateGameState(oldState, events) {
+async function updateGameState(oldState, events) {
     // this will update the game state based on the events
     // and return the new game state
     const newState = { ...oldState,
@@ -392,7 +397,7 @@ function updateGameState(oldState, events) {
         hostHand: [...oldState.hostHand],
         clientHand: [...oldState.clientHand],
     };
-    const pokemons = jotaiStore.get(pokemonsAtom);
+    const pokemons = await jotaiStore.get(pokemonsAtom);
     const hostBoard = newState.hostBoard.map((id) => ({ ...jotaiStore.get(pokemons[id - 1])}));
     const clientBoard = newState.clientBoard.map((id) => ({ ...jotaiStore.get(pokemons[id - 1])}));
     hostBoard.forEach((card, index) => card.health = newState.hostBoardHealth[index]);
@@ -472,8 +477,8 @@ async function onClientRequest(data) {
             // The client sent a tickSecond request, we need to update the game state
             if (syncState.gamePhase === "playCards" && syncState.countdown === 1) {
                 // the countdown reached 1, we need to switch to the next phase
-                const stateChanges = simulateFightingPhase(syncState);
-                const newState = updateGameState(syncState, stateChanges);
+                const stateChanges = await simulateFightingPhase(syncState);
+                const newState = await updateGameState(syncState, stateChanges);
                 newState.gamePhase = "fight";
                 const update = createGameStateUpdate("fight", stateChanges);
                 await gameStateUpdateCollection.create(update);
@@ -497,11 +502,11 @@ async function onClientRequest(data) {
         } else if (request.type === "playCard") {
             // the client wants to play a card
             const cardId = request.data.cardId;
+            const pokemons = await jotaiStore.get(pokemonsAtom);
             jotaiStore.set(syncGameStateAtom, (oldState) => {
                 const newState = { ...oldState };
                 newState.clientHand = newState.clientHand.filter((id) => id !== cardId);
                 newState.clientBoard = [...newState.clientBoard, cardId];
-                const pokemons = jotaiStore.get(pokemonsAtom);
                 const pokemon = jotaiStore.get(pokemons[cardId - 1]);
                 newState.clientBoardHealth = [...newState.clientBoardHealth, pokemon.base.HP];
                 newState.clientCardsPlayed += 1;
@@ -564,12 +569,12 @@ export async function playCard(cardId) {
         }
 
         const req = createClientRequest("playCard", { cardId });
+        const pokemons = await jotaiStore.get(pokemonsAtom);
         jotaiStore.set(syncGameStateAtom, (oldState) => {
             const newState = { ...oldState };
             newState.clientHand = newState.clientHand.filter((id) => id !== cardId);
             newState.clientBoard = [...newState.clientBoard, cardId];
             // get pokemons HP value
-            const pokemons = jotaiStore.get(pokemonsAtom);
             const pokemon = jotaiStore.get(pokemons[cardId - 1]);
             console.log("playing pokemon id ", cardId, " name ", pokemon.name, " id ", pokemon.id);
             newState.clientBoardHealth = [...newState.clientBoardHealth, pokemon.base.HP];
@@ -602,12 +607,12 @@ export async function playCard(cardId) {
             return;
         }
 
+        const pokemons = await jotaiStore.get(pokemonsAtom);
         jotaiStore.set(syncGameStateAtom, (oldState) => {
             const newState = { ...oldState };
             newState.hostHand = newState.hostHand.filter((id) => id !== cardId);
             newState.hostBoard = [...newState.hostBoard, cardId];
             // get pokemons HP value
-            const pokemons = jotaiStore.get(pokemonsAtom);
             const pokemon = jotaiStore.get(pokemons[cardId - 1]);
             newState.hostBoardHealth = [...newState.hostBoardHealth, pokemon.base.HP];
             newState.hostCardsPlayed += 1;
@@ -626,6 +631,3 @@ window.game = (command, args) => {
         playCard(args);
     }
 }
-
-// Q: how to undo last 2 commits in git without losing changes?
-// A: https://stackoverflow.com/questions/927358/how-to-undo-the-last-two-commits-in-git-without-losing-any-changes

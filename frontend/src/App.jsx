@@ -10,7 +10,7 @@ import axios from "axios";
 import { CssBaseline } from "@mui/material";
 import { pokemonsAtom } from "./atoms/pokemons";
 import { useAtom, useAtomValue } from "jotai";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import PokemonGame from './components/PokemonGame';
 
 const router = createBrowserRouter([
@@ -25,7 +25,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/pokemon",
-        element: <PokemonView />,
+        element: <Suspense fallback={<div>Loading...</div>}> <PokemonView /></Suspense>,
       },
       {
         path: "/pokemon/:id",
@@ -43,7 +43,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/fight",
-        element: <PokemonGame />,
+        element: <Suspense fallback={<div>Loading...</div>} ><PokemonGame /></Suspense>,
       },
       {
         path: "/leaderboard",
