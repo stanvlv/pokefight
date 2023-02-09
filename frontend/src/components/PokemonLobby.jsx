@@ -36,6 +36,7 @@ import {
   invitationsAtom,
   createInvitation,
   acceptInvitation,
+  clearInvitation,
 } from "../atoms/gamelogic";
 import { backendUrl } from "../pocketbase/pb";
 
@@ -101,6 +102,9 @@ export default function PokemonLobby() {
   };
 
   const handleGameInvite = (inv) => {
+    if (inv.host === myselfValue.id) {
+      clearInvitation(inv.id);
+    }
     acceptInvitation(inv.id);
   };
 
@@ -155,7 +159,10 @@ export default function PokemonLobby() {
               })}
           </List>
           <List>
-            {invitations.map((inv) => {
+            {invitations.filter(inv => {
+              const from = lobby.find(user => user.id === inv.host);
+              return from && Date.now() - from.updated < 10000;
+            }).map((inv) => {
               const user = lobby.find((user) => user.id === inv.host);
               return (
                 <ListItemButton

@@ -292,8 +292,8 @@ export async function acceptInvitation(invitationId) {
     await clientRequestCollection.create(joinRequest);
 }
 
-async function clearInvitation() {
-    const invitation = jotaiStore.get(openInvitation);
+export async function clearInvitation(inv) {
+    const invitation = {id: inv} ?? jotaiStore.get(openInvitation);
     if (invitation) {
         jotaiStore.set(openInvitation, null);
         await invitationCollection.delete(invitation.id);
