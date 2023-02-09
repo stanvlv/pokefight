@@ -13,6 +13,7 @@ import Box from "@mui/material/Box";
 import { useAtom, atom, useAtomValue, useStore } from "jotai";
 import { filteredPokemonsAtom, paginatedAtom, } from "../atoms/pokemons";
 import TextField from '@mui/material/TextField';
+import { atomFamily } from "jotai/utils";
 
 function PokemonCard({ pokemonAtom }) {
   // pok.sprites is loadable, so we need to use the currentStore to get the value
@@ -49,31 +50,32 @@ function PokemonCard({ pokemonAtom }) {
     </Card>
   );
 }
+const pokemonPerPage = 20;
+
+const pageSizeAtomFamily = atomFamily((pageSizeMe) => {
+  console.log("this should be called only once per search");
+  return atom(async (get) => {
+    const filtered = await get(pageSizeMe);
+    console.log("filtered is ", filtered);
+    return Math.ceil(filtered.length / pokemonPerPage);
+  });
+});
 
 export default function PokemonView() {
   // selecting how many pokemon per page and creating the state
-  const pokemonPerPage = 20;
+  console.log("PokemonView rendered");
   const [pageNumber, setPageNumber] = useState(1);
 
   // this will take the input and save it in search value
   //then it filters the pokemons from the currentpage
   const [searchValue, setSearchValue] = useState('');
 
-  const filteredAtom = useMemo(() => {
-    return filteredPokemonsAtom(searchValue);
-  }, [searchValue]);
+  const filteredAtom = filteredPokemonsAtom(searchValue);
 
-  const pageSizeAtom = useMemo(() => {
-    return atom((get) => {
-      const filtered = get(filteredAtom);
-      return Math.ceil(filtered.length / pokemonPerPage);
-    });
-  }, [filteredAtom])
+  const pageSizeAtom = pageSizeAtomFamily(filteredAtom);
   const pageCount = useAtomValue(pageSizeAtom);
 
-  const currentPageAtom = useMemo(() => {
-    return paginatedAtom({page: pageNumber, pageSize: pokemonPerPage, paginateMe: filteredAtom});
-  }, [pageNumber, filteredAtom]);
+  const currentPageAtom = paginatedAtom({page: pageNumber, pageSize: pokemonPerPage, paginateMe: filteredAtom});
 
   const [data,] = useAtom(currentPageAtom);
   const currentStore = useStore();

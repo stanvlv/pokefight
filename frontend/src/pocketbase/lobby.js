@@ -66,9 +66,9 @@ lobbyCollection.subscribe("*", (data) => {
       )
     );
     if (jotaiStore.get(myself)?.id === data.record.id) {
-      console.log("Detected changes to myself");
+      // console.log("Detected changes to myself");
       lastMeasuredPing = Date.now() - lastBeatTimestamp;
-      console.log("milliseconds for round-trip:", lastMeasuredPing);
+      // console.log("milliseconds for round-trip:", lastMeasuredPing);
       jotaiStore.set(myself, { ...data.record });
     }
   } else if (data.action === "delete") {
@@ -80,7 +80,7 @@ lobbyCollection.subscribe("*", (data) => {
         .filter((oldItem) => oldItem.id !== data.record.id)
     );
     if (jotaiStore.get(myself)?.id === data.record.id) {
-      console.log("Detected changes to myself");
+      // console.log("Detected changes to myself");
       if (heartbeatTimer) {
         clearInterval(heartbeatTimer);
         heartbeatTimer = null;
