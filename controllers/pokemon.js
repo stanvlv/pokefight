@@ -7,7 +7,7 @@ const Pokemon = require("../models/pokemon");
 
 const getPokemons = async (req, res) => {
   try {
-    const pokemons = await Pokemon.find({});
+    const pokemons = await Pokemon.find({}, {}, { sort: { id: 1 } });
     res.json(pokemons);
   } catch (error) {
     res.status(500).send(error.message);

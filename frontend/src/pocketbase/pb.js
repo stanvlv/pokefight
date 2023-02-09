@@ -4,3 +4,4 @@ const pbAddress = "https://pb.flyingsquirrels.de/";
 
 export const pbClient = new PocketBase(pbAddress);
 export const jotaiStore = getDefaultStore();
+pbClient.autoCancellation(false);
