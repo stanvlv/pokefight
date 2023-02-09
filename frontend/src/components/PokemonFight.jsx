@@ -5,10 +5,13 @@ import { useAtomValue } from 'jotai'
 import poke from "../assets/pokeball.png";
 import { Box, Button, Grid, Paper, Typography, List, ListItem, ListItemText } from '@mui/material';
 import { CSSGrid } from './styled/commons';
-
+import { myself, savedUserName } from '../pocketbase/lobby';
+import axios from 'axios'
 function PokemonCard ({pokemonAtom, hp}) {
   const pokemon = useAtomValue(pokemonAtom);
   const sprites = useAtomValue(pokemon.sprites);
+  
+  
   return (
     <Box sx={{border: "1px solid black", borderRadius: 3, maxHeight: 150}}>
       <img src={sprites.state === "hasData" ? sprites.data.front_default : `${poke}`} alt={pokemon.name} height="100" />
@@ -32,7 +35,9 @@ export default function PokemonFight() {
   const currentState = useAtomValue(currentStateAtom);
   const gameState = useAtomValue(syncGameStateAtomView);
   const recentCombatLog = useAtomValue(recentCombatLogAtom);
+  const player = useAtomValue(savedUserName);
   const bottomDiv = useRef(null);
+  
 
   const opponentLife = currentState === "host" ? gameState.clientLife : gameState.hostLife;
   const opponentBoard = currentState === "host" ? gameState.clientBoard : gameState.hostBoard;
@@ -46,6 +51,23 @@ export default function PokemonFight() {
   const winState = gameState.winState;
 
   const resultMessage = winState === "none" ? null : winState === "draw" ? "Draw!" : winState === currentState ? "You win!" : "You lose!";
+  
+  
+  useEffect(() => {
+    // the player comes from the saved local storage
+    // then when the game finishesh with win or lose will take
+    // from the result message and will send a put request and update the users
+    // on the backend depending to the win or the lost. One request from each user
+      const outcome = resultMessage
+      
+      if(outcome === "You win!" || outcome === "You lose!"){
+        axios.put(`http://localhost:3001/users/fight`, { player: player, outcome: outcome })
+          .then(res => console.log(res.data.updatedUser))
+          .catch(err => console.log(err))
+        }
+      
+      
+  }, [resultMessage])
 
   useEffect(() => {
     bottomDiv.current?.scrollIntoView({ behavior: "smooth" });

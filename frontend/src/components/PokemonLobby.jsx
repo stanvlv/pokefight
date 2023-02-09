@@ -30,7 +30,13 @@ import {
 import { chatArrayAtom, writeToChat } from "../pocketbase/chat";
 import { CSSGrid } from "./styled/commons";
 import { useMemo } from "react";
-import { invitationsAtom, createInvitation, acceptInvitation } from "../atoms/gamelogic";
+import axios from "axios";
+
+import {
+  invitationsAtom,
+  createInvitation,
+  acceptInvitation,
+} from "../atoms/gamelogic";
 
 export default function PokemonLobby() {
   const lobby = useAtomValue(lobbyArray);
@@ -44,6 +50,10 @@ export default function PokemonLobby() {
   const [chatMessage, setChatMessage] = useState("");
   const navigate = useNavigate();
   const bottomDiv = useRef(null);
+
+  // condsole.log(`This is savedName const : ${savedName}`) // gives Stan
+  // consodle.log(`this MYSELF VALUE : ${myselfValue}`) // object
+  // consdole.log(` userName const : ${userName}`) // Stan
 
   // we need to reverse chatArray, because we want to show the latest message at the bottom
   const reversedChatArray = useMemo(() => {
@@ -62,10 +72,25 @@ export default function PokemonLobby() {
     }
   });
 
-  const handleRegisterUser = () => {
-    setSavedName(userName);
-    setUserDialogOpened(false);
-    addMyself(userName, "available");
+  const handleRegisterUser = async () => {
+    // the register function now will try to post into users the new user
+    // if the user exists in MongoDB it will throw an error and alert
+    // if it is all good it will proceed and register you in the game
+    try {
+      const response = await axios
+        .post(`http://localhost:3001/users`, { nickname: userName })
+        .then((res) => console.log(res.data));
+      setSavedName(userName);
+      setUserDialogOpened(false);
+      addMyself(userName, "available");
+    } catch (error) {
+      console.error(error);
+      if (error.response.status === 409) {
+        alert("User already exists. Please choose a different name.");
+      } else {
+        alert("Something went wrong. Please try again later");
+      }
+    }
   };
 
   const handleChatMessageSubmit = (e) => {
@@ -76,7 +101,7 @@ export default function PokemonLobby() {
 
   const handleGameInvite = (inv) => {
     acceptInvitation(inv.id);
-  }
+  };
 
   useEffect(() => {
     // if we have savedName, and myself is null, register with the saved name
@@ -129,15 +154,17 @@ export default function PokemonLobby() {
               })}
           </List>
           <List>
-            {
-              invitations.map((inv) => {
-                const user = lobby.find((user) => user.id === inv.host);
-                return (
-                <ListItemButton key={inv.id} onClick={() => handleGameInvite(inv)}>
+            {invitations.map((inv) => {
+              const user = lobby.find((user) => user.id === inv.host);
+              return (
+                <ListItemButton
+                  key={inv.id}
+                  onClick={() => handleGameInvite(inv)}
+                >
                   <ListItemText primary={`Invite from ${user.name}`} />
                 </ListItemButton>
-              )})
-            }
+              );
+            })}
           </List>
           <Box component="form" onSubmit={(e) => e.preventDefault()}>
             <Button onClick={createInvitation}>Create game invitation</Button>

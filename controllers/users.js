@@ -12,9 +12,9 @@ const getUsers = async (req, res) => {
 
 // get info about one user with its ID
 const getUser = async (req, res) => {
-  const { id } = req.params;
+  const { nickname } = req.params;
   try {
-    const user = await Users.findOne({ _id: id });
+    const user = await Users.findOne({ nickname: nickname });
     if (!user) {
       return res.status(404).send("User not found");
     }
@@ -35,7 +35,7 @@ const createUser = async (req, res) => {
     const existingUser = await Users.findOne({ nickname });
     if (existingUser) {
       return res
-        .status(400)
+        .status(409)
         .send("There is already an user with the same nickname");
     }
     const user = new Users({
@@ -55,35 +55,27 @@ const createUser = async (req, res) => {
 // it will take 2 outcomes and depending on them it
 // updates the stats in the database
 const updateUsers = async (req, res) => {
-  const { player1, player2, outcome1, outcome2 } = req.body;
+  const { player, outcome } = req.body;
 
   try {
-    const user1 = await Users.findOne({ nickname: player1 });
-    const user2 = await Users.findOne({ nickname: player2 });
+    const user = await Users.findOne({ nickname: player });
 
-    if (!user1 || !user2) {
+    if (!user) {
       return res.status(404).send("User not found");
     }
 
-    user1.games_played += 1;
-    user2.games_played += 1;
-
-    if (outcome1 === "win") {
-      user1.games_won += 1;
-    } else if (outcome1 === "loss") {
-      user1.games_lost += 1;
+    if (outcome === "You win!") {
+      user.games_won += 1;
+      user.games_played += 1;
+    } else if (outcome === "You lose!") {
+      user.games_lost += 1;
+      user.games_played += 1;
     }
 
-    if (outcome2 === "win") {
-      user2.games_won += 1;
-    } else if (outcome2 === "loss") {
-      user2.games_lost += 1;
-    }
+    const updatedUser = await user.save();
 
-    const updatedUser1 = await user1.save();
-    const updatedUser2 = await user2.save();
-
-    res.status(200).json({ updatedUser1, updatedUser2 });
+    console.log(updatedUser);
+    res.status(200).json({ updatedUser });
   } catch (error) {
     res.status(500).send(error.message);
   }
