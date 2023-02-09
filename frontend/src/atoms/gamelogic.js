@@ -26,28 +26,36 @@ const clientRequestCollection = pbClient.collection("gameClientRequest");
 const gameStateUpdateCollection = pbClient.collection("gameStateUpdate");
 const invitationCollection = pbClient.collection("gameInvitation");
 
-let gsuSubs = 0;
+// Invariant: you can only have at most one subscription to the collection
 
-async function gsuSubscribe(fun) {
-    gsuSubs += 1;
-    if (gsuSubs > 1) {
-        console.error("gsuSubscribe called more than once");
-        return;
+function oneSubGuard(collection) {
+    let subs = 0;
+    return {
+        sub: async (fun) => {
+            subs += 1;
+            if (subs > 1) {
+                console.error("subscribe called more than once");
+                return;
+            }
+            console.log("subscribe called with fun ", fun);
+            const ret = await collection.subscribe("*", fun);
+            console.log("subscribe returned ", ret);
+        },
+        unsub: async () => {
+            subs -= 1;
+            if (subs < 0) {
+                console.error("unsubscribe called more than once");
+                return;
+            }
+            console.log("unsubscribe called");
+            await collection.unsubscribe("*");
+        }
     }
-    console.log("gsuSubscribe called with fun ", fun);
-    const ret = await gameStateUpdateCollection.subscribe("*", fun);
-    console.log("gsuSubscribe returned ", ret);
 }
 
-async function gsuUnsubscribe() {
-    gsuSubs -= 1;
-    if (gsuSubs < 0) {
-        console.error("gsuUnsubscribe called more than once");
-        return;
-    }
-    console.log("gsuUnsubscribe called");
-    await gameStateUpdateCollection.unsubscribe("*");
-}
+const {sub: gsuSubscribe, unsub: gsuUnsubscribe} = oneSubGuard(gameStateUpdateCollection);
+const {sub: gsSubscribe, unsub: gsUnsubscribe} = oneSubGuard(gameStateCollection);
+const {sub: crSubscribe, unsub: crUnsubscribe} = oneSubGuard(clientRequestCollection);
 
 // const allClRequests = await clientRequestCollection.getFullList();
 // for (const clRequest of allClRequests) {
@@ -80,7 +88,7 @@ export async function resetGameState () {
     jotaiStore.set(syncGameStateAtom, null);
     jotaiStore.set(recentCombatLogAtom, []);
     clearTimers();
-    await gameStateCollection.unsubscribe();
+    await gsUnsubscribe();
 }
 
 /// Section 1: constructors for objects that we use in this module
@@ -179,7 +187,7 @@ export async function createInvitation() {
         '$autoCancel': false,
     };
     // subscribe to listen to client response to the invitation
-    await clientRequestCollection.subscribe("*", onClientRequest);
+    await crSubscribe(onClientRequest);
     const pbEntry = await invitationCollection.create(invitation);
     jotaiStore.set(openInvitation, pbEntry);
     return pbEntry;
@@ -269,7 +277,7 @@ async function onGameState(data) {
         if (newState.client === jotaiStore.get(myself).id) {
             // we are the client, and we were accepted by the host
             // we can now start the game
-            await gameStateCollection.unsubscribe("*");
+            await gsUnsubscribe("*");
             jotaiStore.set(syncGameStateAtom, newState);
             // jotaiStore.set(currentState, "client");
             console.log("received game state, starting game as client", newState);
@@ -288,12 +296,12 @@ export async function acceptInvitation(invitationId) {
     // we are the client, accepting the invitation from the host
     const joinRequest = createClientRequest("gameJoin", {invitationId});
     // subscribe to the game state updates, so that we see when we were accepted
-    await gameStateCollection.subscribe("*", onGameState);
+    await gsSubscribe(onGameState);
     await clientRequestCollection.create(joinRequest);
 }
 
 export async function clearInvitation(inv) {
-    const invitation = {id: inv} ?? jotaiStore.get(openInvitation);
+    const invitation = inv ? {id: inv} : jotaiStore.get(openInvitation);
     if (invitation) {
         jotaiStore.set(openInvitation, null);
         await invitationCollection.delete(invitation.id);
@@ -597,7 +605,7 @@ async function changeCurrentState(newState) {
         // we need to unsubscribe from the game state updates
         // gameStateUpdateCollection.unsubscribe("*");
         await gsuUnsubscribe();
-        await clientRequestCollection.unsubscribe("*");
+        await crUnsubscribe("*");
     } else if (newState === "client") {
         // we need to subscribe to the game state updates
         // gameStateUpdateCollection.subscribe("*", onGameStateUpdate);
