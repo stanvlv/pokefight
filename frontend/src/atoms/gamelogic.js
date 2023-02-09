@@ -46,6 +46,10 @@ export const syncGameStateAtomView = atom((get) => get(syncGameStateAtom));
 export const recentCombatLogAtom = atom([]);
 
 /// Section 0: resetting the game state
+
+/**
+ * Resets the game state to its initial values.
+ */
 export function resetGameState () {
     // we reset the game state
     changeCurrentState("idle");
@@ -58,6 +62,13 @@ export function resetGameState () {
 
 /// Section 1: constructors for objects that we use in this module
 
+/**
+ * Deals 5 cards from the deck to the hand. Returns the new deck and the new hand.
+ * 
+ * @param {number[]} deck A deck of pokemons. Each card is represented by a pokemon id.
+ * @param {number[]} hand Current hand of the player. Each card is represented by a pokemon id.
+ * @returns {[number[], number[]]} A tuple of the new deck and the new hand.
+ */
 function dealCards ( deck, hand ) {
     // we drop all previous cards and deal 5 new cards
     const newHand = deck.slice(0, 5);
@@ -65,6 +76,31 @@ function dealCards ( deck, hand ) {
     return [newDeck, newHand];
 }
 
+/**
+ * @typedef {Object} GameState
+ * @property {number[]} cardDeck The deck of cards. Each card is represented by a pokemon id.
+ * @property {number[]} hostHand The host's hand. Each card is represented by a pokemon id.
+ * @property {number[]} clientHand The client's hand. Each card is represented by a pokemon id.
+ * @property {number} hostLife The host's life.
+ * @property {number} clientLife The client's life.
+ * @property {number[]} hostBoard The host's board. Each card is represented by a pokemon id.
+ * @property {number[]} hostBoardHealth The host's board health. Each card is represented by a pokemon id.
+ * @property {number[]} clientBoard The client's board. Each card is represented by a pokemon id.
+ * @property {number[]} clientBoardHealth The client's board health. Each card is represented by a pokemon id.
+ * @property {number} clientCardsPlayed The number of cards that the client has played.
+ * @property {number} hostCardsPlayed The number of cards that the host has played.
+ * @property {"playCards"|"fight"} currentPhase The current phase of the game.
+ * @property {"none"|"host"|"client"|"draw"} winState The current win state of the game.
+ * @property {number} countdown The countdown for the play cards phase.
+ * @property {string} id The id of the game in the pocketbase.
+ * @property {string} host The id of the host of the game.
+ * @property {string} client The id of the client of the game.
+ */
+
+/**
+ * Creates a new game state.
+ * @returns {Promise<Omit<GameState, "id"|"client"|"host">>} The new game state.
+ */
 async function createGameStateSynced () {
     // assumption: both client and the host have the same card array in the same order in pokemonsAtom
     // in this case we dont have to extract cards from the atoms and trigger unnecessary fetches

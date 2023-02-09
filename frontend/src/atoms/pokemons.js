@@ -29,14 +29,8 @@ export const pokemonsAtom = atom(async (get) => {
     })
   });
   // setValue(response.data);
-  pokemonsArrived = true;
   return value;
 });
-// This is a flag to indicate whether the pokemons have been fetched or not
-// Since we only ever use defaultStore, this flag can be global
-export let pokemonsArrived = false;
-
-export const pokemonsAtomsAtom = splitAtom(pokemonsAtom);
 
 // This is a derived atom family that returns a paginated list of pokemons
 export const paginatedAtom = atomFamily(({page, pageSize, paginateMe}) => {
