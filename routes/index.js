@@ -17,7 +17,7 @@ router.get("/", (req, res) => {
   res.send("hey");
 });
 
-router.get("/leaderboard", getUsers).get("/leaderboard/:id", getUser);
+router.get("/leaderboard", getUsers).get("/leaderboard/:nickname", getUser);
 
 router.post("/users", createUser);
 router.put("/users/fight", updateUsers);

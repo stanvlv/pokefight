@@ -48,6 +48,10 @@ export default function PokemonLobby() {
   const navigate = useNavigate();
   const bottomDiv = useRef(null);
 
+  // condsole.log(`This is savedName const : ${savedName}`) // gives Stan
+  // consodle.log(`this MYSELF VALUE : ${myselfValue}`) // object
+  // consdole.log(` userName const : ${userName}`) // Stan
+
   // we need to reverse chatArray, because we want to show the latest message at the bottom
   const reversedChatArray = useMemo(() => {
     return chatArray.slice().reverse();
@@ -66,13 +70,16 @@ export default function PokemonLobby() {
   });
 
   const handleRegisterUser = async () => {
-    setSavedName(userName);
-    setUserDialogOpened(false);
-    addMyself(userName, "available");
+// the register function now willtry to post into users the new user
+// if the user exists in MongoDB it will throw an error and alert
+// if it is all good it will proceed and register you in the game
     try {
       const response = await axios.post(`http://localhost:3001/users`,
        { nickname: userName })
        .then(res => console.log(res.data));
+       setSavedName(userName);
+    setUserDialogOpened(false);
+    addMyself(userName, "available");
     } catch (error) {
       console.error(error)
       if (error.response.status === 409) {
@@ -114,15 +121,6 @@ export default function PokemonLobby() {
     bottomDiv.current?.scrollIntoView({ behavior: "smooth" });
   }, [reversedChatArray]);
 
-  useEffect(() => {
-    console.log(savedName + "awd2")
-    console.log(userName + "dawsdsdaw3")
-    axios.post(`http://localhost:3001/users`, {
-      nickname: `${myself}`
-    })
-    .then(res => console.log(res))
-    .catch(err => console.error(err))
-  }, [userName])
 
   return (
     <>
