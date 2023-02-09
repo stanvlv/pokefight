@@ -37,6 +37,7 @@ import {
   createInvitation,
   acceptInvitation,
 } from "../atoms/gamelogic";
+import { backendUrl } from "../pocketbase/pb";
 
 export default function PokemonLobby() {
   const lobby = useAtomValue(lobbyArray);
@@ -78,7 +79,7 @@ export default function PokemonLobby() {
     // if it is all good it will proceed and register you in the game
     try {
       const response = await axios
-        .post(`http://localhost:3001/users`, { nickname: userName })
+        .post(`${backendUrl}/users`, { nickname: userName })
         .then((res) => console.log(res.data));
       setSavedName(userName);
       setUserDialogOpened(false);

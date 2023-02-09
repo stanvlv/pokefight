@@ -3,7 +3,7 @@ import { pbClient, jotaiStore } from "../pocketbase/pb";
 import { myself } from "../pocketbase/lobby";
 import { atom } from "jotai";
 
-const PLAYCARDS_COUNTDOWN = 20; // seconds
+const PLAYCARDS_COUNTDOWN = 10; // seconds
 
 let sendTicks = true;
 export function invertTicks() {
@@ -25,6 +25,29 @@ export const gameStateCollection = pbClient.collection("gameState");
 const clientRequestCollection = pbClient.collection("gameClientRequest");
 const gameStateUpdateCollection = pbClient.collection("gameStateUpdate");
 const invitationCollection = pbClient.collection("gameInvitation");
+
+let gsuSubs = 0;
+
+async function gsuSubscribe(fun) {
+    gsuSubs += 1;
+    if (gsuSubs > 1) {
+        console.error("gsuSubscribe called more than once");
+        return;
+    }
+    console.log("gsuSubscribe called with fun ", fun);
+    const ret = await gameStateUpdateCollection.subscribe("*", fun);
+    console.log("gsuSubscribe returned ", ret);
+}
+
+async function gsuUnsubscribe() {
+    gsuSubs -= 1;
+    if (gsuSubs < 0) {
+        console.error("gsuUnsubscribe called more than once");
+        return;
+    }
+    console.log("gsuUnsubscribe called");
+    await gameStateUpdateCollection.unsubscribe("*");
+}
 
 // const allClRequests = await clientRequestCollection.getFullList();
 // for (const clRequest of allClRequests) {
@@ -50,14 +73,14 @@ export const recentCombatLogAtom = atom([]);
 /**
  * Resets the game state to its initial values.
  */
-export function resetGameState () {
+export async function resetGameState () {
     // we reset the game state
-    changeCurrentState("idle");
+    await changeCurrentState("idle");
     jotaiStore.set(openInvitation, null);
     jotaiStore.set(syncGameStateAtom, null);
     jotaiStore.set(recentCombatLogAtom, []);
     clearTimers();
-    gameStateCollection.unsubscribe();
+    await gameStateCollection.unsubscribe();
 }
 
 /// Section 1: constructors for objects that we use in this module
@@ -156,7 +179,7 @@ export async function createInvitation() {
         '$autoCancel': false,
     };
     // subscribe to listen to client response to the invitation
-    clientRequestCollection.subscribe("*", onClientRequest);
+    await clientRequestCollection.subscribe("*", onClientRequest);
     const pbEntry = await invitationCollection.create(invitation);
     jotaiStore.set(openInvitation, pbEntry);
     return pbEntry;
@@ -227,7 +250,7 @@ function detectWinCondition(state) {
     jotaiStore.set(allInvitationsAtom, currentInvitations);
 }
 // we subscribe to the invitation collection to update 
-invitationCollection.subscribe("*", (data) => {
+await invitationCollection.subscribe("*", (data) => {
     if (data.action === "create") {
         jotaiStore.set(allInvitationsAtom, (old) => [...old, data.record]);
     } else if (data.action === "delete") {
@@ -239,17 +262,18 @@ invitationCollection.subscribe("*", (data) => {
     }
 });
 
-function onGameState(data) {
+async function onGameState(data) {
     if (data.action === "create") {
         // check if this is the game state that we are waiting for
         const newState = data.record;
         if (newState.client === jotaiStore.get(myself).id) {
             // we are the client, and we were accepted by the host
             // we can now start the game
-            gameStateCollection.unsubscribe("*");
+            await gameStateCollection.unsubscribe("*");
             jotaiStore.set(syncGameStateAtom, newState);
             // jotaiStore.set(currentState, "client");
-            changeCurrentState("client");
+            console.log("received game state, starting game as client", newState);
+            await changeCurrentState("client");
             // the game starts in the playCards phase, so we initialize the timer
             initializeTimer(async () => {
                 const update = createClientRequest("tickSecond", {});
@@ -264,7 +288,7 @@ export async function acceptInvitation(invitationId) {
     // we are the client, accepting the invitation from the host
     const joinRequest = createClientRequest("gameJoin", {invitationId});
     // subscribe to the game state updates, so that we see when we were accepted
-    gameStateCollection.subscribe("*", onGameState);
+    await gameStateCollection.subscribe("*", onGameState);
     await clientRequestCollection.create(joinRequest);
 }
 
@@ -285,18 +309,24 @@ async function createHostGameState(opponentId) {
     state.host = jotaiStore.get(myself).id;
     // clientRequestCollection.subscribe("*", onClientRequest);
     const pbEntry = await gameStateCollection.create(state);
-    changeCurrentState("host");
+    await changeCurrentState("host");
     return pbEntry;
 }
 
 async function onGameStateUpdate(dataInc) {
+    console.log("received game state update", dataInc);
     if (currentState === "host") {
+        console.log("we are the host, ignore");
         // this is just what we sent ourselves, ignore
         return;
     }
     // if we have a game, and the game id is the same, continue otherwise return
     const syncState = jotaiStore.get(syncGameStateAtom);
     if (!syncState || syncState.id !== dataInc.record.gameId) {
+        console.log("we are not in this game, ignore");
+        if (syncState) {
+            console.log("we are in game", syncState.id, "but received update for game", dataInc.record.gameId);
+        }
         return;
     }
     if (dataInc.action === "create") {
@@ -306,6 +336,7 @@ async function onGameStateUpdate(dataInc) {
         // for each undoable action, check if it can be removed
         undoableActions = undoableActions.filter((a) => !a.checkRemove(update));
         if (update.type === "fight") {
+            console.log("Fight update", data);
             for (const action of undoableActions) {
                 action.undo(update);
             }
@@ -328,6 +359,7 @@ async function onGameStateUpdate(dataInc) {
                 }, 5000);
             }
         } else if (update.type === "playCards") {
+            console.log("PlayCards update", data);
             // set game phase to "playCards"
             jotaiStore.set(syncGameStateAtom, (old) => ({...old, gamePhase: "playCards", countdown: PLAYCARDS_COUNTDOWN, clientCardsPlayed: 0, hostCardsPlayed: 0}));
             // set the timer to issue game ticks
@@ -337,6 +369,7 @@ async function onGameStateUpdate(dataInc) {
                 await clientRequestCollection.create(update);
             });
         } else if (update.type === "playCard") {
+            console.log("PlayCard update", data);
             if (data.target === "clientBoard") {
                 // we can just ignore this, because we already optimistically updated the game state
                 return;
@@ -558,15 +591,17 @@ async function onClientRequest(data) {
     }
 }
 
-function changeCurrentState(newState) {
+async function changeCurrentState(newState) {
     jotaiStore.set(currentState, newState);
     if (newState === "idle") {
         // we need to unsubscribe from the game state updates
-        gameStateUpdateCollection.unsubscribe("*");
-        clientRequestCollection.unsubscribe("*");
+        // gameStateUpdateCollection.unsubscribe("*");
+        await gsuUnsubscribe();
+        await clientRequestCollection.unsubscribe("*");
     } else if (newState === "client") {
         // we need to subscribe to the game state updates
-        gameStateUpdateCollection.subscribe("*", onGameStateUpdate);
+        // gameStateUpdateCollection.subscribe("*", onGameStateUpdate);
+        await gsuSubscribe(onGameStateUpdate);
     } else if (newState === "host") {
         // we already subscribed to the client requests in createHostGameState
     } else {

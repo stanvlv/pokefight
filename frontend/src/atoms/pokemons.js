@@ -2,10 +2,11 @@ import { atom } from "jotai";
 import { atomFamily, splitAtom, loadable } from "jotai/utils";
 import  deepEqual  from "fast-deep-equal";
 import axios from "axios";
+import { backendUrl } from "../pocketbase/pb";
 
 // This will contain an array of atoms, one for each pokemon
 export const pokemonsAtom = atom(async (get) => {
-  const response = await axios.get("http://localhost:3001/pokemon");
+  const response = await axios.get(`${backendUrl}/pokemon`);
   // we create an atom for each pokemon in the array
   const value = response.data.map((pokemon) => {
     // this atom will actually hold the pokemon data

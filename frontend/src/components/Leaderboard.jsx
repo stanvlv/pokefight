@@ -9,6 +9,7 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
+import { backendUrl } from "../pocketbase/pb";
 
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
@@ -35,7 +36,7 @@ export default function Leaderboard() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:3001/leaderboard")
+      .get(`${backendUrl}/leaderboard`)
       .then((res) => setUsers(res.data))
       .catch((err) => console.error(err));
   }, []);

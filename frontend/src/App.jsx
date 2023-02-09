@@ -12,6 +12,7 @@ import { pokemonsAtom } from "./atoms/pokemons";
 import { useAtom, useAtomValue } from "jotai";
 import { Suspense, useEffect } from "react";
 import PokemonGame from './components/PokemonGame';
+import { backendUrl } from "./pocketbase/pb";
 
 const router = createBrowserRouter([
   {
@@ -32,7 +33,7 @@ const router = createBrowserRouter([
         element: <PokemonInfo />,
         loader: async ({ params }) => {
           const data = await axios.get(
-            `http://localhost:3001/pokemon/${params.id}`
+            `${backendUrl}/pokemon/${params.id}`
           );
           return data.data;
         },

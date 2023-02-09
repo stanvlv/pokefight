@@ -7,6 +7,7 @@ import { Box, Button, Grid, Paper, Typography, List, ListItem, ListItemText } fr
 import { CSSGrid } from './styled/commons';
 import { myself, savedUserName } from '../pocketbase/lobby';
 import axios from 'axios'
+import { backendUrl } from '../pocketbase/pb';
 function PokemonCard ({pokemonAtom, hp}) {
   const pokemon = useAtomValue(pokemonAtom);
   const sprites = useAtomValue(pokemon.sprites);
@@ -61,7 +62,7 @@ export default function PokemonFight() {
       const outcome = resultMessage
       
       if(outcome === "You win!" || outcome === "You lose!"){
-        axios.put(`http://localhost:3001/users/fight`, { player: player, outcome: outcome })
+        axios.put(`${backendUrl}/users/fight`, { player: player, outcome: outcome })
           .then(res => console.log(res.data.updatedUser))
           .catch(err => console.log(err))
         }
