@@ -1,8 +1,7 @@
 const pokedex = require("../pokedex.json");
 const Pokemon = require("../models/pokemon");
 
-
-// database is moved from json file to MongoDB 
+// database is moved from json file to MongoDB
 // it is being extracted from there
 
 const getPokemons = async (req, res) => {
