@@ -32,21 +32,21 @@ function oneSubGuard(collection) {
     let subs = 0;
     return {
         sub: async (fun) => {
-            subs += 1;
-            if (subs > 1) {
+            if (subs !== 0) {
                 console.error("subscribe called more than once");
                 return;
             }
+            subs = 1;
             console.log("subscribe called with fun ", fun);
             const ret = await collection.subscribe("*", fun);
             console.log("subscribe returned ", ret);
         },
         unsub: async () => {
-            subs -= 1;
-            if (subs < 0) {
+            if (subs !== 1) {
                 console.error("unsubscribe called more than once");
                 return;
             }
+            subs = 0;
             console.log("unsubscribe called");
             await collection.unsubscribe("*");
         }
