@@ -5,4 +5,4 @@ simply check data from the pokemons and have a simple game
 
 
 ## for it we used:
-NodeJS,Express,React,MUI,Jotai
+NodeJS,Express,React,MUI,Jotai,MongoDB
